@@ -117,7 +117,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   // Redak izazova s avatarom, imenom, detaljima i desnim sadržajem (gumb/rezultat).
   function redak(iz, desno) {
     const kriterijTekst = iz.kriterij === 'vrijeme' ? t('ch_crit_time') : t('ch_crit_attempts')
-    const tipEmoji = iz.tip === 'online' ? '🟢' : '📴'
+    const tipEmoji = iz.tip === 'poteze' ? '🔄' : iz.tip === 'online' ? '🟢' : '📴'
     const kritEmoji = iz.kriterij === 'vrijeme' ? '⏱️' : '🎯'
     return (
       <div className="iz-red" key={iz.id}>
@@ -171,7 +171,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
               ))}
             </select>
 
-            {/* Vrsta: offline / online */}
+            {/* Vrsta: offline / online / na poteze */}
             <span className="iz-oznaka">{t('ch_type')}</span>
             <div className="iz-kriterij">
               <button className={tip === 'offline' ? 'aktivan' : ''} onClick={() => setTip('offline')}>
@@ -179,6 +179,15 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
               </button>
               <button className={tip === 'online' ? 'aktivan' : ''} onClick={() => setTip('online')}>
                 {t('ch_online')}
+              </button>
+              <button
+                className={tip === 'poteze' ? 'aktivan' : ''}
+                onClick={() => {
+                  setTip('poteze')
+                  setKriterij('pokusaji') // na poteze uvijek po pokušajima
+                }}
+              >
+                {t('ch_turns')}
               </button>
             </div>
 
@@ -197,22 +206,26 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
               ))}
             </div>
 
-            {/* Kriterij pobjede */}
-            <span className="iz-oznaka">{t('ch_criterion')}</span>
-            <div className="iz-kriterij">
-              <button
-                className={kriterij === 'pokusaji' ? 'aktivan' : ''}
-                onClick={() => setKriterij('pokusaji')}
-              >
-                {t('ch_crit_attempts')}
-              </button>
-              <button
-                className={kriterij === 'vrijeme' ? 'aktivan' : ''}
-                onClick={() => setKriterij('vrijeme')}
-              >
-                {t('ch_crit_time')}
-              </button>
-            </div>
+            {/* Kriterij pobjede (na poteze je uvijek po pokušajima) */}
+            {tip !== 'poteze' && (
+              <>
+                <span className="iz-oznaka">{t('ch_criterion')}</span>
+                <div className="iz-kriterij">
+                  <button
+                    className={kriterij === 'pokusaji' ? 'aktivan' : ''}
+                    onClick={() => setKriterij('pokusaji')}
+                  >
+                    {t('ch_crit_attempts')}
+                  </button>
+                  <button
+                    className={kriterij === 'vrijeme' ? 'aktivan' : ''}
+                    onClick={() => setKriterij('vrijeme')}
+                  >
+                    {t('ch_crit_time')}
+                  </button>
+                </div>
+              </>
+            )}
 
             {/* Broj riječi: brzi izbori + vlastiti unos */}
             <span className="iz-oznaka">{t('ch_word_count')}</span>

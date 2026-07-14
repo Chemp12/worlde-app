@@ -36,6 +36,7 @@ export function perspektiva(iz, mojId) {
 // Je li izazov odlučen (znamo li pobjednika)?
 export function jeOdlucen(iz, mojId) {
   const p = perspektiva(iz, mojId)
+  if (iz.tip === 'poteze') return !!iz.poteza?.gotovo // na poteze: gotovo je kad partija završi
   if (iz.tip === 'online') {
     if (iz.kriterij === 'vrijeme') return !!iz.prvi_gotov // prvi koji završi je pobjednik
     // "manje pokušaja": odlučeno kad su oba gotova ILI kad istekne dodatno vrijeme
@@ -51,6 +52,14 @@ export function jeOdlucen(iz, mojId) {
 export function rezultat(iz, mojId) {
   if (!jeOdlucen(iz, mojId)) return null
   const p = perspektiva(iz, mojId)
+
+  // Na poteze: pobjeđuje manje ukupno pokušaja.
+  if (iz.tip === 'poteze') {
+    const jaIzazivac = iz.izazivac === mojId
+    const moj = jaIzazivac ? iz.poteza.ukupnoI : iz.poteza.ukupnoP
+    const prot = jaIzazivac ? iz.poteza.ukupnoP : iz.poteza.ukupnoI
+    return moj < prot ? 'win' : moj > prot ? 'lose' : 'draw'
+  }
 
   if (iz.tip === 'online' && iz.kriterij === 'vrijeme') {
     return iz.prvi_gotov === mojId ? 'win' : 'lose'

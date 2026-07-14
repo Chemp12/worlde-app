@@ -185,6 +185,12 @@ const PRIJEVODI = {
     ch_you: 'You',
     ch_opponent: 'Opponent',
     ch_word_was: 'Word: {rijec}',
+    ch_turns: '🔄 Turn-based',
+    pt_your_turn: '✍️ Your turn',
+    pt_opp_turn: "⏳ Opponent's turn",
+    pt_solved_waiting: '✅ Solved! Waiting...',
+    pt_you: 'You',
+    pt_opponent: 'Opponent',
   },
 
   hr: {
@@ -369,6 +375,12 @@ const PRIJEVODI = {
     ch_you: 'Ti',
     ch_opponent: 'Protivnik',
     ch_word_was: 'Riječ: {rijec}',
+    ch_turns: '🔄 Na poteze',
+    pt_your_turn: '✍️ Tvoj red',
+    pt_opp_turn: '⏳ Protivnikov red',
+    pt_solved_waiting: '✅ Riješeno! Čekaš...',
+    pt_you: 'Ti',
+    pt_opponent: 'Protivnik',
   },
 }
 

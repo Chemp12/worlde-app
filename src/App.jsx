@@ -11,6 +11,7 @@ import Prijava from './Prijava'
 import HubVarijanti from './HubVarijanti'
 import Pocetna from './Pocetna'
 import IgraIzazov from './IgraIzazov'
+import IgraPoteze from './IgraPoteze'
 import './App.css'
 
 const KLJUC_STATISTIKE = 'wordle-statistika'
@@ -826,14 +827,17 @@ function App() {
     )
   }
 
-  // Ekran igranja izazova
+  // Ekran igranja izazova (na poteze -> IgraPoteze, inače -> IgraIzazov)
   if (ekran === 'izazov' && aktivniIzazov) {
-    return (
-      <IgraIzazov
-        korisnik={korisnik}
-        izazov={aktivniIzazov}
-        onNatrag={() => setEkran('varijante')}
-      />
+    const zajednicko = {
+      korisnik,
+      izazov: aktivniIzazov,
+      onNatrag: () => setEkran('varijante'),
+    }
+    return aktivniIzazov.tip === 'poteze' ? (
+      <IgraPoteze {...zajednicko} />
+    ) : (
+      <IgraIzazov {...zajednicko} />
     )
   }
 

@@ -1,0 +1,66 @@
+/* Status poteza (čiji je red) */
+.pt-status {
+  margin: -4px 0 8px;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--muted);
+}
+.pt-status.moj {
+  color: var(--accent);
+}
+
+/* Dvije ploče jedna do druge (ti + protivnik) */
+.pt-ploce {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 6px;
+}
+.pt-strana {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.pt-oznaka {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.pt-ploca {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Manje pločice jer su dvije ploče */
+.pt-ploca .kvadratic {
+  width: 44px;
+  height: 44px;
+  font-size: 22px;
+}
+
+/* Onemogućena tipkovnica dok nije tvoj red */
+.tipkovnica.onemoguceno {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .pt-ploce {
+    gap: 8px;
+  }
+  .pt-ploca .kvadratic {
+    width: calc((94vw - 30px) / 10); /* 2 ploče × 5 pločica */
+    height: auto;
+    aspect-ratio: 1;
+    font-size: 3.4vw;
+  }
+  .pt-ploca .red {
+    gap: 3px;
+  }
+  .pt-ploca {
+    gap: 3px;
+  }
+}
