@@ -6,7 +6,8 @@ import Avatar from './Avatar'
 import './modal.css'
 import './Izazovi.css'
 
-const IZBORI_BROJA = [5, 10, 15, 20] // ponuđeni brojevi riječi
+const IZBORI_BROJA = [5, 10, 15, 20] // brzi izbori broja riječi
+const MAX_RIJECI = 50                // gornja granica (razumno za jedan izazov)
 
 function Izazovi({ korisnik, onIgraj, onZatvori }) {
   const { t } = useJezik()
@@ -175,7 +176,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
               </button>
             </div>
 
-            {/* Broj riječi */}
+            {/* Broj riječi: brzi izbori + vlastiti unos */}
             <span className="iz-oznaka">{t('ch_word_count')}</span>
             <div className="iz-kriterij">
               {IZBORI_BROJA.map((n) => (
@@ -187,6 +188,18 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
                   {n}
                 </button>
               ))}
+            </div>
+            <div className="iz-vlastito">
+              <label>{t('ch_custom')}:</label>
+              <input
+                type="number"
+                min="1"
+                max={MAX_RIJECI}
+                value={brojRijeci}
+                onChange={(e) =>
+                  setBrojRijeci(Math.max(1, Math.min(MAX_RIJECI, Number(e.target.value) || 1)))
+                }
+              />
             </div>
 
             <button className="iz-posalji" onClick={posaljiIzazov} disabled={!odabrani}>

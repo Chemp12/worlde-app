@@ -77,6 +77,30 @@
   margin-top: 2px;
 }
 
+/* Vlastiti broj riječi */
+.iz-vlastito {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.iz-vlastito input {
+  width: 72px;
+  padding: 8px 10px;
+  font-size: 15px;
+  font-weight: bold;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+.iz-vlastito input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* Desni dio retka izazova: broj riječi + akcija/rezultat */
 .iz-desno {
   display: inline-flex;
