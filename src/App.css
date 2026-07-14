@@ -1,0 +1,500 @@
+/* Cijela aplikacija */
+.app {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h1 {
+  letter-spacing: 6px;
+  margin: 24px 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  width: 100%;
+  text-align: center;
+}
+
+/* Traka s prijavljenim korisnikom (gore desno) */
+.korisnik-traka {
+  position: fixed;
+  top: 10px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 20;
+}
+.korisnik-ime {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text);
+  font-weight: bold;
+}
+.odjava-gumb {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface2);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.odjava-gumb:hover {
+  background: var(--surface3);
+}
+
+/* --- Bočna traka s načinima igre --- */
+.bocna-traka {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 210px;
+  transform: translateX(-172px); /* skriveno: viri samo ~38px (ručka) */
+  transition: transform 0.25s ease;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  z-index: 10;
+}
+.bocna-traka:hover {
+  transform: translateX(0); /* na hover se izvuče cijela */
+}
+.nacini {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 14px;
+}
+.nacini-naslov {
+  font-size: 14px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 6px;
+}
+.nacin-gumb {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.nacin-gumb:hover {
+  background: var(--surface3);
+}
+.nacin-gumb.aktivan {
+  border-color: var(--accent); /* zeleni rub za odabrani mod */
+  background: color-mix(in srgb, var(--accent) 22%, transparent); /* blagi ton odabrane boje */
+}
+.nacin-ikona {
+  font-size: 20px;
+}
+/* Ručka na desnom rubu trake (vidljiva kad je traka skrivena) */
+.rucka {
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: var(--muted);
+}
+
+/* Podnaslov s brojem izazova */
+.podnaslov {
+  margin: -8px 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+/* Odbrojavanje do sljedeće riječi */
+.odbrojavanje {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Traka sa statistikom */
+.statistika {
+  display: flex;
+  gap: 24px;
+  margin: 4px 0 12px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.stat-broj {
+  font-size: 26px;
+  font-weight: bold;
+}
+.stat-ime {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Poruke igraču (obavijesti, pobjeda, poraz) */
+.poruka {
+  margin: 8px 0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--surface2);
+  color: var(--text);
+  font-weight: bold;
+}
+.poruka.uspjeh {
+  background: var(--accent);
+  color: #ffffff;
+}
+.poruka.neuspjeh {
+  background: #b03a2e;
+  color: #ffffff;
+}
+
+/* Kontejner svih ploča (jedne ili više) — rešetka. */
+.ploce {
+  position: relative; /* da nevidljivo polje može biti preko svih ploča */
+  display: grid;
+  gap: 18px 24px;
+  margin-top: 20px;
+  justify-content: center;
+}
+.ploce-1 { grid-template-columns: auto; }
+.ploce-2 { grid-template-columns: repeat(2, auto); }
+.ploce-4 { grid-template-columns: repeat(2, auto); }
+.ploce-8 { grid-template-columns: repeat(4, auto); }
+
+/* Jedna ploča: svi redovi jedan ispod drugog */
+.ploca {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  perspective: 1000px; /* 3D dubina -> okretanje pločica izgleda realno */
+}
+/* Riješena ploča blago prigušena (jasno da je gotova) */
+.ploca.rijesena {
+  opacity: 0.55;
+}
+
+/* Manje ploče kad ih je više odjednom (pločice se smanjuju) */
+.ploce-2 .kvadratic { width: 48px; height: 48px; font-size: 26px; }
+.ploce-4 .kvadratic { width: 42px; height: 42px; font-size: 23px; }
+.ploce-8 .kvadratic { width: 34px; height: 34px; font-size: 18px; }
+.ploce-4, .ploce-8 { gap: 14px 16px; }
+.ploce-4 .ploca, .ploce-8 .ploca { gap: 4px; }
+.ploce-4 .red, .ploce-8 .red { gap: 4px; }
+
+/* Nevidljivo polje za unos (otvara tipkovnicu mobitela). Prekriva ploču,
+   ali propušta dodire (pointer-events: none) pa dodir "pada" na ploču. */
+.skriveni-unos {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 16px; /* 16px sprječava automatski zoom na iOS */
+  pointer-events: none;
+}
+
+/* Savjet za dodir — skriven na desktopu, prikazan na mobitelu */
+.mobilni-savjet {
+  display: none;
+}
+
+/* Jedan red: 5 kvadratića jedan pored drugog */
+.red {
+  display: flex;
+  gap: 5px;
+}
+
+/* Jedan kvadratić (jedno slovo) */
+.kvadratic {
+  width: 60px;
+  height: 60px;
+  border: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* --- Animacije --- */
+
+/* Okretanje pločice pri potvrdi (svaki stupac kasni malo više -> "val").
+   Boju dodajemo iz JS-a točno kad je pločica okrenuta na rub (nevidljiva),
+   pa izgleda kao da okret "otkriva" boju. */
+@keyframes okreni {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(-90deg); }
+  100% { transform: rotateX(0deg); }
+}
+.kvadratic.otkrij {
+  animation: okreni 0.5s ease both;
+}
+/* Svaki stupac se okrene malo kasnije -> efekt "vala". Kašnjenje je u CSS-u
+   (a ne inline) da ga osvježavanje ekrana ne prekida. */
+.red .kvadratic:nth-child(1).otkrij { animation-delay: 0s; }
+.red .kvadratic:nth-child(2).otkrij { animation-delay: 0.28s; }
+.red .kvadratic:nth-child(3).otkrij { animation-delay: 0.56s; }
+.red .kvadratic:nth-child(4).otkrij { animation-delay: 0.84s; }
+.red .kvadratic:nth-child(5).otkrij { animation-delay: 1.12s; }
+
+/* "Pop" kad upišeš slovo */
+@keyframes pop {
+  0% { transform: scale(1); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+.kvadratic.upisano {
+  animation: pop 0.12s ease;
+}
+
+/* Trešnja reda kod nevaljane riječi */
+@keyframes tresnja {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+.red.tresi {
+  animation: tresnja 0.4s ease;
+}
+
+/* --- Tipkovnica na ekranu --- */
+.tipkovnica {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 30px;
+  width: 100%;
+  max-width: 500px;
+  padding: 0 8px;
+}
+.tipk-red {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+/* Pola-tipke razmak (centrira srednji red, drži slova jednakih širina) */
+.tipk-spacer {
+  flex: 0.5;
+}
+.tipka {
+  flex: 1 1 0;        /* svako slovo jednake širine... */
+  min-width: 0;
+  height: 58px;
+  border: none;
+  border-radius: 5px;
+  background: var(--key-bg);
+  color: var(--key-text);
+  font-size: 15px;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.tipka:hover {
+  filter: brightness(1.1);
+}
+.tipka.siroka {
+  flex: 1.5 1 0;      /* ENTER i ⌫ malo širi */
+  font-size: 12px;
+}
+/* Iste boje kao na ploči, ali za tipke (slovo uvijek bijelo na obojenoj tipki) */
+.tipka.tocno {
+  background: var(--accent);
+  color: #ffffff;
+}
+.tipka.skoro {
+  background: #b59f3b;
+  color: #ffffff;
+}
+.tipka.krivo {
+  background: var(--absent);
+  color: #ffffff;
+}
+
+/* Gumb "Nova igra" */
+.gumb {
+  margin-top: 24px;
+  padding: 12px 28px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.gumb:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+
+/* Kvadratić koji NIJE prazan (ima slovo) -> svjetliji rub */
+.kvadratic:not(:empty) {
+  border-color: var(--border2);
+}
+
+/* Boje nakon potvrde reda (slovo uvijek bijelo na obojenoj pločici) */
+.kvadratic.tocno {   /* 🟩 točno slovo, točno mjesto */
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+.kvadratic.skoro {   /* 🟨 slovo postoji, krivo mjesto */
+  background: #b59f3b;
+  border-color: #b59f3b;
+  color: #ffffff;
+}
+.kvadratic.krivo {   /* ⬜ slova nema u riječi */
+  background: var(--absent);
+  border-color: var(--absent);
+  color: #ffffff;
+}
+
+/* --- Mobitel (uski ekrani) --- */
+@media (max-width: 520px) {
+  /* Cijela visina ekrana: naslov gore, ploča u sredini, tipkovnica na dnu */
+  .app {
+    min-height: 100dvh; /* dvh = stvarna visina na mobitelu (bez trake preglednika) */
+    padding: 8px;
+  }
+
+  h1 {
+    font-size: 26px;
+    letter-spacing: 4px;
+    margin: 2px 0;
+    padding-bottom: 6px;
+  }
+  .podnaslov {
+    margin: 0 0 4px;
+    font-size: 13px;
+  }
+
+  /* Statistika kompaktnija */
+  .statistika {
+    gap: 18px;
+    margin: 2px 0 6px;
+  }
+  .stat-broj {
+    font-size: 22px;
+  }
+  .stat-ime {
+    font-size: 11px;
+  }
+
+  /* Kontejner ploča stoji pri vrhu (iznad tipkovnice), klikabilan za tipkovnicu */
+  .ploce {
+    margin-top: 10px;
+    cursor: pointer;
+    gap: 10px;
+  }
+
+  /* KLASIK (1 ploča): pločice popune širinu, velike i kvadratne */
+  .ploce-1 .ploca {
+    width: min(88vw, 320px);
+    gap: 6px;
+  }
+  .ploce-1 .red { gap: 6px; }
+  .ploce-1 .kvadratic {
+    width: auto;
+    height: auto;
+    flex: 1;
+    aspect-ratio: 1;
+    font-size: 1.9rem;
+  }
+
+  /* VIŠE PLOČA: uvijek 2 stupca; pločice računamo iz širine ekrana da uvijek stanu */
+  .ploce-2, .ploce-4, .ploce-8 {
+    grid-template-columns: repeat(2, auto);
+  }
+  .ploce-2 .ploca, .ploce-4 .ploca, .ploce-8 .ploca { gap: 3px; }
+  .ploce-2 .red, .ploce-4 .red, .ploce-8 .red { gap: 3px; }
+  .ploce-2 .kvadratic,
+  .ploce-4 .kvadratic,
+  .ploce-8 .kvadratic {
+    width: calc((94vw - 24px) / 11); /* 2 ploče × 5 pločica = 10, + malo zraka */
+    height: auto;
+    aspect-ratio: 1;
+    font-size: 3.4vw;
+  }
+
+  /* Tipkovnica na ekranu: prikvačena na dno, kompaktne tipke */
+  .tipkovnica {
+    margin-top: auto;
+    padding: 0 3px;
+    gap: 6px;
+  }
+  .tipk-red {
+    gap: 5px;
+  }
+  .tipka {
+    height: 50px;
+    font-size: 15px;
+    border-radius: 5px;
+  }
+  .tipka.siroka {
+    font-size: 11px;
+  }
+
+  /* Savjet za dodir (dodatna opcija — tipkovnica telefona) */
+  .mobilni-savjet {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 10px 0 2px;
+  }
+
+  /* Bočna traka (na hover) nema smisla na mobitelu -> modove biraš na Početnom ekranu */
+  .bocna-traka {
+    display: none;
+  }
+
+  /* Gornja traka korisnika: u normalnom toku (kao nav-traka), da se ne preklapa s naslovom */
+  .korisnik-traka {
+    position: static;
+    width: 100%;
+    justify-content: space-between; /* Početna lijevo, Odjava desno */
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .korisnik-ime-tekst {
+    display: none; /* na mobitelu skrij tekst imena, avatar ostaje */
+  }
+  .odjava-gumb {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  /* Kraj igre kompaktniji */
+  .odbrojavanje,
+  .gumb {
+    margin-top: 12px;
+  }
+}

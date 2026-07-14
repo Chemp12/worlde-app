@@ -1,0 +1,108 @@
+.iz-naslov {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 18px 0 8px;
+}
+
+.iz-info {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 6px 0;
+}
+
+/* Novi izazov */
+.iz-novi {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.iz-select {
+  padding: 12px;
+  font-size: 15px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+.iz-kriterij {
+  display: flex;
+  gap: 6px;
+}
+.iz-kriterij button {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: bold;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.iz-kriterij button.aktivan {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.iz-posalji {
+  padding: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.iz-posalji:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.iz-posalji:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.iz-poruka {
+  margin: 10px 0 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* Redak izazova */
+.iz-red {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--surface2);
+}
+.iz-osoba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+}
+.iz-igraj {
+  padding: 8px 18px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.iz-win {
+  color: var(--accent);
+  font-weight: bold;
+}
+.iz-lose {
+  color: #e0683b;
+  font-weight: bold;
+}
+.iz-draw {
+  color: var(--muted);
+  font-weight: bold;
+}

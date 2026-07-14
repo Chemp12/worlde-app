@@ -1,0 +1,262 @@
+.postavke-kartica {
+  max-width: 400px;
+}
+
+/* Kartica računa (avatar + ime) */
+.postavke-racun {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.postavke-avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1; /* savršeno centrirano slovo */
+  cursor: pointer;
+}
+.postavke-avatar img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover; /* slika popuni kružić bez izobličenja */
+  display: block;
+}
+.postavke-avatar-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 1;
+  color: #ffffff;
+  background: var(--accent);
+  border: 2px solid var(--surface); /* obrub u boji kartice da lijepo "sjedi" */
+  border-radius: 50%;
+}
+.postavke-racun-info {
+  display: flex;
+  flex-direction: column;
+}
+.postavke-oznaka {
+  color: var(--muted);
+  font-size: 12px;
+}
+.postavke-username {
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--text);
+}
+
+/* Gumb "settings redak" (npr. Detaljna statistika) */
+.postavke-red-gumb {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface2);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.postavke-red-gumb:hover {
+  background: var(--surface3);
+}
+.postavke-chevron {
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Odabir jezika */
+.postavke-jezici {
+  display: flex;
+  gap: 8px;
+}
+.jezik-gumb {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.jezik-gumb:hover {
+  background: var(--surface3);
+}
+.jezik-gumb.aktivan {
+  color: #ffffff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Galerija tema */
+.postavke-teme {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.tema-izbor {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  /* pozadina i boja teksta postavljaju se inline (boje teme) */
+}
+.tema-izbor.aktivna {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* Odabir boje naglaska */
+.postavke-boje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.boja-krug {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.boja-krug.aktivna {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+/* Krug za vlastitu boju (skriveni birač unutra) */
+.boja-custom {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  font-size: 16px;
+  overflow: hidden;
+}
+.boja-custom input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  border: none;
+}
+
+/* Naslovi sekcija */
+.postavke-naslov {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 20px 0 8px;
+}
+
+/* Forme (ime, lozinka) */
+.postavke-forma {
+  display: flex;
+  gap: 8px;
+}
+.postavke-polje {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  font-size: 15px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+}
+.postavke-polje::placeholder {
+  color: var(--faint);
+}
+.postavke-polje:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.postavke-gumb {
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.postavke-gumb:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.postavke-gumb:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.postavke-poruka {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.postavke-odjava {
+  width: 100%;
+  margin-top: 22px;
+  padding: 13px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #ff6b5e;
+  background: transparent;
+  border: 2px solid #b03a2e;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.postavke-odjava:hover {
+  background: #b03a2e;
+  color: #ffffff;
+}
+
+.postavke-info {
+  margin: 18px 0 0;
+  text-align: center;
+  color: var(--faint);
+  font-size: 12px;
+}

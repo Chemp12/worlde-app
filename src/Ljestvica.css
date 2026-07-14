@@ -1,0 +1,143 @@
+/* Tamna pozadina preko cijelog ekrana */
+.ljestvica-pozadina {
+  position: fixed;
+  inset: 0; /* top/right/bottom/left = 0 */
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.ljestvica-kartica {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.ljestvica-zaglavlje {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.ljestvica-zaglavlje h2 {
+  margin: 0;
+  font-size: 22px;
+}
+.ljestvica-zatvori {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+.ljestvica-zatvori:hover {
+  color: var(--text);
+}
+
+.ljestvica-info {
+  color: var(--muted);
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* Kartice varijanti (Klasik / Dvojac / ...) */
+.lj-varijante {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.lj-var-gumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+.lj-var-gumb:hover {
+  background: var(--surface3);
+}
+.lj-var-gumb.aktivan {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.lj-var-ikona {
+  font-size: 18px;
+}
+.lj-var-ime {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* Prekidač Globalno / Prijatelji */
+.lj-prekidac {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.lj-prekidac button {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--muted);
+  background: var(--surface2);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.lj-prekidac button.aktivan {
+  color: #ffffff;
+  background: var(--accent);
+}
+
+.ljestvica-tablica {
+  width: 100%;
+  border-collapse: collapse;
+}
+.ljestvica-tablica th,
+.ljestvica-tablica td {
+  padding: 10px 8px;
+  text-align: left;
+}
+.ljestvica-tablica th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+.ljestvica-tablica td {
+  border-bottom: 1px solid var(--surface2);
+}
+.lj-igrac {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Istakni red trenutnog korisnika */
+.ljestvica-tablica tr.ja td {
+  background: color-mix(in srgb, var(--accent) 25%, transparent); /* blagi ton odabrane boje */
+  font-weight: bold;
+}
+.ljestvica-tablica tr.ja td:first-child {
+  border-top-left-radius: 6px;
+  border-bottom-left-radius: 6px;
+}
+.ljestvica-tablica tr.ja td:last-child {
+  border-top-right-radius: 6px;
+  border-bottom-right-radius: 6px;
+}

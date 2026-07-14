@@ -1,0 +1,71 @@
+.prij-pretraga {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.prij-pretraga:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.prij-poruka {
+  color: var(--accent);
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+.prij-naslov {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin: 20px 0 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.prij-info {
+  color: var(--faint);
+  font-size: 14px;
+}
+
+.prij-red {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+}
+.prij-osoba {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.prij-gumb {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-left: 6px;
+}
+.prij-gumb.dodaj {
+  background: var(--accent);
+}
+.prij-gumb.dodaj:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.prij-gumb.odbij {
+  background: var(--surface2);
+  color: var(--text);
+}
+.prij-gumb.odbij:hover {
+  background: var(--surface3);
+}

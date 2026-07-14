@@ -1,0 +1,44 @@
+/* Osnovni reset: makni zadane margine i postavi box-sizing */
+* {
+  box-sizing: border-box;
+}
+
+/* --- Boje teme (varijable) --- */
+/* Zadano = TAMNA tema */
+:root {
+  --bg: #121213;
+  --surface: #1c1c1e;
+  --surface2: #2a2a2c;
+  --surface3: #363638;
+  --text: #ffffff;
+  --muted: #a0a0a0;
+  --faint: #6a6a6a;
+  --border: #3a3a3c;
+  --border2: #565758;
+  --key-bg: #818384;
+  --key-text: #ffffff;
+  --absent: #3a3a3c; /* boja slova kojeg nema (siva pločica/tipka) */
+  --accent: #538d4e; /* boja naglaska (korisnik je može promijeniti) */
+}
+
+/* SVIJETLA tema (kad je <html data-theme="light">) */
+:root[data-theme='light'] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface2: #edeff1;
+  --surface3: #dfe3e6;
+  --text: #1a1a1b;
+  --muted: #787c7e;
+  --faint: #a4a7a9;
+  --border: #d3d6da;
+  --border2: #878a8c;
+  --key-bg: #d3d6da;
+  --key-text: #1a1a1b;
+  --absent: #787c7e;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}

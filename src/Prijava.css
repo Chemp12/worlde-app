@@ -1,0 +1,85 @@
+.prijava-pozadina {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, Helvetica, sans-serif;
+  padding: 20px;
+}
+
+.prijava-kutija {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 28px;
+}
+
+.prijava-logo {
+  letter-spacing: 6px;
+  text-align: center;
+  margin: 0;
+}
+
+.prijava-podnaslov {
+  text-align: center;
+  color: var(--muted);
+  margin: 6px 0 24px;
+}
+
+.prijava-polje {
+  padding: 14px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+  color: var(--text);
+}
+.prijava-polje:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.prijava-greska {
+  color: #ff7b72;
+  font-size: 14px;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.prijava-gumb {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #ffffff;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.prijava-gumb:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+.prijava-gumb:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.prijava-prebaci {
+  margin-top: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.prijava-prebaci:hover {
+  color: var(--text);
+}

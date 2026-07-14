@@ -1,0 +1,116 @@
+.pocetna {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, Helvetica, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.pocetna-top {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-weight: bold;
+}
+/* Gumb za povratak na prethodni ekran (hub modova -> hub varijanti) */
+.natrag-gumb {
+  margin-right: auto; /* gurni sve ostalo (ime varijante) skroz desno */
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface2);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.natrag-gumb:hover {
+  background: var(--surface3);
+}
+
+.pocetna-logo {
+  letter-spacing: 8px;
+  margin: 30px 0 4px;
+  font-size: 40px;
+}
+.pocetna-podnaslov {
+  color: var(--muted);
+  margin: 0 0 28px;
+}
+
+/* Kartice modova: 2 stupca */
+.mod-kartice {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+}
+.mod-kartica {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px 12px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.mod-kartica:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.mod-ikona {
+  font-size: 34px;
+}
+.mod-ime {
+  font-size: 17px;
+  font-weight: bold;
+}
+.mod-opis {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Dodatne akcije (ljestvica, postavke) */
+.pocetna-akcije {
+  display: flex;
+  gap: 14px;
+  margin-top: 24px;
+  width: 100%;
+  max-width: 420px;
+}
+.akcija-gumb {
+  flex: 1;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface2);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.akcija-gumb:hover {
+  background: var(--surface3);
+}
+
+/* Mobitel: akcije jedna ispod druge da imena stanu */
+@media (max-width: 520px) {
+  .pocetna-logo {
+    font-size: 34px;
+    margin-top: 16px;
+  }
+  .pocetna-akcije {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,120 @@
+/* Kartica statistike: kompaktna, usklađena s tamnim ugođajem */
+.stat-kartica {
+  padding: 16px 18px;
+  max-height: 92vh;
+}
+
+.stat-info {
+  color: var(--muted);
+  text-align: center;
+  padding: 16px 0;
+}
+
+/* Ukupni pregled — stat pločice u mreži 3×2 */
+.stat-mreza {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.stat-celija {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 9px 4px;
+}
+.stat-celija b {
+  font-size: 20px;
+  color: var(--text);
+}
+.stat-celija span {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+/* Naslovi sekcija */
+.stat-naslov {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin: 14px 0 8px;
+}
+
+/* Raspodjela pogodaka — magnitudni graf (jedna boja, prigušena podloga) */
+.raspodjela {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.rasp-red {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rasp-broj {
+  width: 10px;
+  font-weight: bold;
+  font-size: 13px;
+  color: var(--text);
+}
+.rasp-track {
+  flex: 1;
+  height: 24px;
+  background: var(--surface2); /* prigušena "pruga" iza trake */
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+}
+.rasp-traka {
+  height: 100%;
+  min-width: 22px; /* da se broj vidi i kad je nula */
+  background: var(--accent); /* Wordle zelena */
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 7px;
+  transition: width 0.3s ease;
+}
+.rasp-count {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ffffff;
+}
+
+/* Kartica jednog moda */
+.stat-mod {
+  background: var(--surface2);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 7px;
+}
+.stat-mod-naslov {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+.stat-mod-brojevi {
+  display: flex;
+  justify-content: space-between;
+}
+.stat-mod-brojevi > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.stat-mod-brojevi b {
+  font-size: 16px;
+}
+.stat-mod-brojevi span {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
