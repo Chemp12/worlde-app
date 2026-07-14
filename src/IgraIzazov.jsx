@@ -174,7 +174,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
         zatresi()
         return
       }
-      if (!jeDozvoljena('en', trenutni)) {
+      if (!jeDozvoljena(izazov.jezik || 'en', trenutni)) {
         setPoruka(t('not_in_list'))
         zatresi()
         return

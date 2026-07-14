@@ -1,19 +1,40 @@
 // Zajednička logika oko riječi — dijele je glavna igra (App.jsx) i izazovi.
 // Svaki jezik ima svoj popis čestih riječi (4–8 slova), služi za rješenja i za dozvoljene pokušaje.
 import en from './rijeci-en.txt?raw'
+import es from './rijeci-es.txt?raw'
+import fr from './rijeci-fr.txt?raw'
+import de from './rijeci-de.txt?raw'
+import it from './rijeci-it.txt?raw'
+import hr from './rijeci-hr.txt?raw'
 
 export const BROJ_STUPACA = 5 // zadana duljina (izazovi zasad koriste 5)
-
-// Popisi po jeziku. (Faza 2 dodaje es, fr, de, it, hr.)
-const POPISI = {
-  en: parsiraj(en),
-}
-
-export const ZADANI_JEZIK = 'en'
 
 function parsiraj(txt) {
   return txt.split(/\r?\n/).map((r) => r.trim().toUpperCase()).filter(Boolean)
 }
+
+// Popisi po jeziku.
+const POPISI = {
+  en: parsiraj(en),
+  es: parsiraj(es),
+  fr: parsiraj(fr),
+  de: parsiraj(de),
+  it: parsiraj(it),
+  hr: parsiraj(hr),
+}
+
+export const ZADANI_JEZIK = 'en'
+
+// Ponuđeni jezici riječi (za izbornike). Kod se prikazuje kao tekst
+// (zastavice-emoji se na Windowsu ne prikazuju kao zastave).
+export const JEZICI = [
+  { id: 'en', ime: 'English', kod: 'EN' },
+  { id: 'es', ime: 'Español', kod: 'ES' },
+  { id: 'fr', ime: 'Français', kod: 'FR' },
+  { id: 'de', ime: 'Deutsch', kod: 'DE' },
+  { id: 'it', ime: 'Italiano', kod: 'IT' },
+  { id: 'hr', ime: 'Hrvatski', kod: 'HR' },
+]
 
 // Popis riječi zadane duljine za zadani jezik (računa se jednom pa se pamti).
 const cachePool = {}

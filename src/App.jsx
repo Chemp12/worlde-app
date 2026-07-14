@@ -3,7 +3,9 @@ import { supabase } from './supabaseClient'
 import { NACINI } from './moduli'
 import { VARIJANTE, varijantaPoId } from './varijante'
 import { useJezik } from './i18n'
-import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, ZADANI_JEZIK } from './rijeci'
+import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, ZADANI_JEZIK, JEZICI } from './rijeci'
+
+const KLJUC_JEZIK_RIJECI = 'wordle-jezik-rijeci'
 import Avatar from './Avatar'
 import Prijava from './Prijava'
 import HubVarijanti from './HubVarijanti'
@@ -233,7 +235,8 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   const brojRedova = varijanta.brojRedova
   const brojRijeci = varijanta.brojRijeci
   const [nacin, setNacin] = useState(pocetniMod)
-  const [jezik] = useState(ZADANI_JEZIK)          // jezik riječi (Faza 2 dodaje izbornik)
+  // Jezik riječi (pamti se globalno).
+  const [jezik, setJezik] = useState(() => localStorage.getItem(KLJUC_JEZIK_RIJECI) || ZADANI_JEZIK)
   const [duljinaUnlimited, setDuljinaUnlimited] = useState(5) // duljina za neograničeni mod
 
   // Duljina riječi (= broj stupaca ploče) za trenutnu varijantu + mod.
@@ -246,7 +249,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
         varijanta,
         pocetniMod,
         korisnik.id,
-        ZADANI_JEZIK,
+        localStorage.getItem(KLJUC_JEZIK_RIJECI) || ZADANI_JEZIK,
         duljinaZa(varijanta, pocetniMod, 5)
       ),
     []
@@ -353,6 +356,20 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     setAnimira(false)
     setPrikaziKraj(jeGotovaIgra(stanje.pokusaji, stanje.tajne, brojRedova))
     localStorage.setItem(KLJUC_NACINA, noviNacin)
+  }
+
+  // Promijeni jezik riječi -> učitaj igru trenutnog moda na novom jeziku.
+  function promijeniJezik(noviJezik) {
+    setJezik(noviJezik)
+    localStorage.setItem(KLJUC_JEZIK_RIJECI, noviJezik)
+    const stanje = ucitajStanje(varijanta, nacin, korisnik.id, noviJezik, brojStupaca)
+    setTajne(stanje.tajne)
+    setPokusaji(stanje.pokusaji)
+    setTrenutni('')
+    setPoruka('')
+    setRedZaAnimaciju(null)
+    setAnimira(false)
+    setPrikaziKraj(jeGotovaIgra(stanje.pokusaji, stanje.tajne, brojRedova))
   }
 
   // Promijeni duljinu riječi (samo neograničeni mod) -> nova/spremljena igra te duljine.
@@ -630,6 +647,20 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
       <h1>{varijanta.ikona} {t('var_' + varijanta.id + '_ime').toUpperCase()}</h1>
       <p className="podnaslov">{podnaslovZa(nacin, t)}</p>
 
+      {/* Izbor jezika riječi (svi modovi) */}
+      <div className="jezik-rijeci" title={t('words_lang')}>
+        {JEZICI.map((j) => (
+          <button
+            key={j.id}
+            className={`jr-gumb ${jezik === j.id ? 'aktivan' : ''}`}
+            onClick={() => promijeniJezik(j.id)}
+            title={j.ime}
+          >
+            {j.kod}
+          </button>
+        ))}
+      </div>
+
       {/* Izbor duljine riječi — samo Klasik neograničeni */}
       {nacin === 'unlimited' && varijanta.id === 'klasik' && (
         <div className="duljina-izbor">
@@ -673,8 +704,13 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
       )}
       {!gotovo && poruka && <p className="poruka">{poruka}</p>}
 
-      {/* Sve ploče u rešetki (klik bilo gdje otvara tipkovnicu mobitela) */}
-      <div className={`ploce ploce-${brojRijeci}`} onClick={fokusirajUnos}>
+      {/* Sve ploče u rešetki (klik bilo gdje otvara tipkovnicu mobitela).
+          key = jezik+mod+duljina -> ploča se ponovno iscrta i "uleti" pri promjeni. */}
+      <div
+        className={`ploce ploce-${brojRijeci}`}
+        key={`${jezik}-${nacin}-${brojStupaca}`}
+        onClick={fokusirajUnos}
+      >
         {/* Nevidljivo polje: otvara tipkovnicu mobitela i prima slova. */}
         <input
           ref={inputRef}

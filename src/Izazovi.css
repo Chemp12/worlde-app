@@ -77,6 +77,39 @@
   margin-top: 2px;
 }
 
+/* Jezik riječi (zastavice) */
+.iz-jezici {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.iz-jezik {
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  padding: 8px 10px;
+  color: var(--muted);
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.1s;
+}
+.iz-jezik:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+.iz-jezik:active {
+  transform: scale(0.9);
+}
+.iz-jezik.aktivan {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  animation: zastava-pop 0.32s ease; /* keyframe je definiran u App.css (globalan) */
+}
+
 /* Vlastiti broj riječi */
 .iz-vlastito {
   display: flex;

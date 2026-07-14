@@ -25,21 +25,24 @@ function poravnaj(s) {
     .replace(/œ/g, 'oe')
 }
 
+// Uzmi samo prvu "riječ" iz retka: podržava "riječ", "riječ broj" (frekvencija),
+// i "riječ/FLAGS" (hunspell rječnik).
+function prvaRijec(redak) {
+  return poravnaj(redak.trim().split(/\s+/)[0].split('/')[0].toLowerCase())
+}
+
 // Filter-rječnik (npr. ENABLE) — zadržavamo samo riječi koje postoje u njemu.
 let dozvoljene = null
 if (filter) {
   dozvoljene = new Set(
-    fs
-      .readFileSync(filter, 'utf8')
-      .split(/\r?\n/)
-      .map((w) => poravnaj(w.trim().toLowerCase()))
+    fs.readFileSync(filter, 'utf8').split(/\r?\n/).map(prvaRijec)
   )
 }
 
 const rijeci = fs
   .readFileSync(sirova, 'utf8')
   .split(/\r?\n/)
-  .map((w) => poravnaj(w.trim().toLowerCase()))
+  .map(prvaRijec)
   .filter((w) => /^[a-z]+$/.test(w) && w.length >= 4 && w.length <= 8)
   .filter((w) => !dozvoljene || dozvoljene.has(w))
 

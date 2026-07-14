@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
-import { slucajneRijeci } from './rijeci'
+import { slucajneRijeci, JEZICI } from './rijeci'
 import { perspektiva, jeOdlucen, rezultat } from './izazovLogika'
 import Avatar from './Avatar'
 import './modal.css'
@@ -19,6 +19,9 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   const [kriterij, setKriterij] = useState('pokusaji')
   const [tip, setTip] = useState('offline')        // 'offline' | 'online'
   const [brojRijeci, setBrojRijeci] = useState(10) // koliko riječi u izazovu
+  const [jezikRijeci, setJezikRijeci] = useState(
+    () => localStorage.getItem('wordle-jezik-rijeci') || 'en'
+  )
   const [poruka, setPoruka] = useState('')
 
   async function ucitaj() {
@@ -63,13 +66,14 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   async function posaljiIzazov() {
     if (!odabrani) return
     setPoruka('')
-    const rijeci = slucajneRijeci(brojRijeci)
+    const rijeci = slucajneRijeci(brojRijeci, jezikRijeci, 5)
     const { error } = await supabase.from('izazovi').insert({
       izazivac: korisnik.id,
       protivnik: odabrani,
       rijeci,
       kriterij,
       tip,
+      jezik: jezikRijeci,
       status: 'na_cekanju', // čeka da protivnik prihvati
     })
     if (error) {
@@ -176,6 +180,21 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
               <button className={tip === 'online' ? 'aktivan' : ''} onClick={() => setTip('online')}>
                 {t('ch_online')}
               </button>
+            </div>
+
+            {/* Jezik riječi */}
+            <span className="iz-oznaka">{t('words_lang')}</span>
+            <div className="iz-jezici">
+              {JEZICI.map((j) => (
+                <button
+                  key={j.id}
+                  className={`iz-jezik ${jezikRijeci === j.id ? 'aktivan' : ''}`}
+                  onClick={() => setJezikRijeci(j.id)}
+                  title={j.ime}
+                >
+                  {j.kod}
+                </button>
+              ))}
             </div>
 
             {/* Kriterij pobjede */}
