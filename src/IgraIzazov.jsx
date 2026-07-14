@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
 import { BROJ_STUPACA, DOZVOLJENE_RIJECI, ocijeniRijec } from './rijeci'
+import { graceRokMs, rezultat as izracunajRezultat } from './izazovLogika'
 import './App.css'
 import './Izazovi.css'
 
@@ -14,7 +15,6 @@ const REDOVI_TIPKOVNICE = [
   ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACK'],
 ]
 
-// Pretvori sekunde u "m:ss"
 function formatVrijeme(sek) {
   const m = Math.floor(sek / 60)
   const s = sek % 60
@@ -25,10 +25,9 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const { t } = useJezik()
   const rijeci = izazov.rijeci
   const ukupnoRijeci = rijeci.length
+  const jeOnline = izazov.tip === 'online'
 
-  // Ključ pod kojim pamtimo napredak OVOG izazova za OVOG igrača.
   const KLJUC = `wordle-izazov-${izazov.id}-${korisnik.id}`
-  // Učitaj spremljeni napredak SAMO jednom, na startu.
   const pocetno = useMemo(() => {
     const s = localStorage.getItem(KLJUC)
     return s ? JSON.parse(s) : {}
@@ -37,7 +36,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const [indexRijeci, setIndexRijeci] = useState(pocetno.indexRijeci ?? 0)
   const [pokusaji, setPokusaji] = useState(pocetno.pokusaji ?? [])
   const [ukupnoPokusaja, setUkupnoPokusaja] = useState(pocetno.ukupnoPokusaja ?? 0)
-  const [proteklo, setProteklo] = useState(pocetno.proteklo ?? 0) // ukupno sekundi (pamti se)
+  const [proteklo, setProteklo] = useState(pocetno.proteklo ?? 0)
   const [trenutni, setTrenutni] = useState('')
   const [poruka, setPoruka] = useState('')
   const [tresi, setTresi] = useState(false)
@@ -45,7 +44,8 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const [otkriveno, setOtkriveno] = useState(0)
   const [animira, setAnimira] = useState(false)
   const [gotovSve, setGotovSve] = useState(false)
-  const [konacni, setKonacni] = useState(null) // red izazova nakon spremanja (za rezultat)
+  const [ishod, setIshod] = useState(null)      // null | 'lost_first' | 'time_up' (online porazi)
+  const [stanje, setStanje] = useState(izazov)  // najnovije stanje izazova iz baze (za online)
 
   const inputRef = useRef(null)
 
@@ -55,14 +55,35 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const izgubio = !pobijedio && pokusaji.length === BROJ_REDOVA
   const krajRijeci = pobijedio || izgubio
 
-  // Štoperica: broji sekunde SAMO dok je izazov otvoren (staje kad izađeš).
+  // Je li protivnik prvi završio? (za online)
+  const protivnikPrvi = jeOnline && stanje.prvi_gotov && stanje.prvi_gotov !== korisnik.id
+  // Koliko sekundi protivnik (ja) još ima kad je online "manje pokušaja"
+  let graceOstalo = null
+  if (protivnikPrvi && izazov.kriterij === 'pokusaji') {
+    const rok = graceRokMs(stanje)
+    if (rok) graceOstalo = Math.max(0, Math.ceil((rok - Date.now()) / 1000))
+  }
+
+  // Štoperica (broji dok je izazov otvoren i nije gotov).
   useEffect(() => {
     if (gotovSve) return
     const id = setInterval(() => setProteklo((p) => p + 1), 1000)
     return () => clearInterval(id)
   }, [gotovSve])
 
-  // Pamti napredak (riječ, pokušaji, ukupno, vrijeme) na svaku promjenu.
+  // Online: povlači stanje izazova iz baze svake 2 sekunde (dok je otvoreno).
+  useEffect(() => {
+    if (!jeOnline) return
+    async function povuci() {
+      const { data } = await supabase.from('izazovi').select('*').eq('id', izazov.id).maybeSingle()
+      if (data) setStanje(data)
+    }
+    povuci()
+    const id = setInterval(povuci, 2000)
+    return () => clearInterval(id)
+  }, [jeOnline, izazov.id])
+
+  // Pamti napredak.
   useEffect(() => {
     if (gotovSve) return
     localStorage.setItem(
@@ -71,8 +92,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     )
   }, [indexRijeci, pokusaji, ukupnoPokusaja, proteklo, gotovSve, KLJUC])
 
-  // Rubni slučaj: ako je učitana riječ VEĆ gotova (igrač izašao usred okretanja
-  // zadnjeg poteza), na povratku prijeđi dalje da se ne zaglavi.
+  // Rubni slučaj: učitana riječ već gotova (izašao usred okretanja) -> nastavi.
   useEffect(() => {
     if (!gotovSve && krajRijeci && redZaAnimaciju === null) {
       const id = setTimeout(() => sljedecaRijec(pokusaji.length), 300)
@@ -80,6 +100,23 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ONLINE: reagiraj kad protivnik prvi završi.
+  useEffect(() => {
+    if (!jeOnline || gotovSve || !protivnikPrvi) return
+    if (izazov.kriterij === 'vrijeme') {
+      // kraće vrijeme: protivnik je prvi -> odmah gubim
+      setIshod('lost_first')
+      setGotovSve(true)
+      localStorage.removeItem(KLJUC)
+    } else if (graceOstalo === 0) {
+      // manje pokušaja: isteklo mi je dodatno vrijeme -> gubim
+      setIshod('time_up')
+      setGotovSve(true)
+      localStorage.removeItem(KLJUC)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stanje, proteklo, gotovSve, protivnikPrvi, graceOstalo])
 
   function zatresi() {
     setTresi(true)
@@ -91,12 +128,25 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     const polja = jaIzazivac
       ? { izazivac_pokusaji: pokusajaUkupno, izazivac_vrijeme: vrijeme, izazivac_gotov: true }
       : { protivnik_pokusaji: pokusajaUkupno, protivnik_vrijeme: vrijeme, protivnik_gotov: true }
+
+    // Online: ako još nitko nije "prvi gotov", proglasi sebe prvim (pokreće grace).
+    if (jeOnline) {
+      const { data: cur } = await supabase
+        .from('izazovi')
+        .select('prvi_gotov')
+        .eq('id', izazov.id)
+        .maybeSingle()
+      if (cur && !cur.prvi_gotov) {
+        polja.prvi_gotov = korisnik.id
+        polja.prvi_gotov_u = new Date().toISOString()
+      }
+    }
+
     await supabase.from('izazovi').update(polja).eq('id', izazov.id)
     const { data } = await supabase.from('izazovi').select('*').eq('id', izazov.id).maybeSingle()
-    setKonacni(data)
+    if (data) setStanje(data)
   }
 
-  // Prijeđi na sljedeću riječ ili završi izazov.
   function sljedecaRijec(pokusajaZaOvu) {
     const noviUkupno = ukupnoPokusaja + pokusajaZaOvu
     setUkupnoPokusaja(noviUkupno)
@@ -105,7 +155,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
 
     if (indexRijeci + 1 >= ukupnoRijeci) {
       setGotovSve(true)
-      localStorage.removeItem(KLJUC) // izazov gotov -> obriši spremljeni napredak
+      localStorage.removeItem(KLJUC)
       spremiRezultat(noviUkupno, proteklo)
     } else {
       setIndexRijeci(indexRijeci + 1)
@@ -134,7 +184,6 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
       setTrenutni('')
       setPoruka('')
 
-      // Animacija okretanja reda (boje se otkrivaju stupac po stupac).
       setRedZaAnimaciju(pokusaji.length)
       setOtkriveno(0)
       setAnimira(true)
@@ -146,7 +195,6 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
       const rijesio = trenutni === tajna
       const potrosio = noviPokusaji.length === BROJ_REDOVA
       if (rijesio || potrosio) {
-        // Tek kad okretanje završi -> (prikaži riječ ako nije pogodio i) idi dalje.
         setTimeout(() => {
           if (!rijesio) setPoruka(t('ch_word_was', { rijec: tajna }))
           sljedecaRijec(noviPokusaji.length)
@@ -178,7 +226,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     return () => window.removeEventListener('keydown', naPritisak)
   }, [trenutni, pokusaji, krajRijeci, animira, gotovSve, tajna])
 
-  // Boje tipkovnice za TRENUTNU riječ (dok se red okreće, još ga ne bojamo).
+  // Boje tipkovnice za TRENUTNU riječ.
   const statusSlova = {}
   const RANG = { krivo: 1, skoro: 2, tocno: 3 }
   const redovaZaBoje = animira ? pokusaji.length - 1 : pokusaji.length
@@ -194,20 +242,8 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
 
   // --- Završni ekran ---
   if (gotovSve) {
-    const jaIzazivac = izazov.izazivac === korisnik.id
-    const protivnikGotov = konacni
-      ? jaIzazivac ? konacni.protivnik_gotov : konacni.izazivac_gotov
-      : false
-    let rezultat = null
-    if (konacni && protivnikGotov) {
-      const poljeP = jaIzazivac ? 'izazivac_pokusaji' : 'protivnik_pokusaji'
-      const poljePP = jaIzazivac ? 'protivnik_pokusaji' : 'izazivac_pokusaji'
-      const poljeV = jaIzazivac ? 'izazivac_vrijeme' : 'protivnik_vrijeme'
-      const poljeVP = jaIzazivac ? 'protivnik_vrijeme' : 'izazivac_vrijeme'
-      const moja = konacni.kriterij === 'vrijeme' ? konacni[poljeV] : konacni[poljeP]
-      const prot = konacni.kriterij === 'vrijeme' ? konacni[poljeVP] : konacni[poljePP]
-      rezultat = moja < prot ? 'win' : moja > prot ? 'lose' : 'draw'
-    }
+    const r = izracunajRezultat(stanje, korisnik.id) // 'win' | 'lose' | 'draw' | null
+    const jaPrvi = jeOnline && stanje.prvi_gotov === korisnik.id
 
     return (
       <div className="app">
@@ -217,23 +253,30 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
           </button>
         </div>
         <h1>⚔️</h1>
-        <p className="poruka uspjeh">{t('ch_complete')}</p>
 
-        <div className="statistika">
-          <div className="stat">
-            <span className="stat-broj">{ukupnoPokusaja}</span>
-            <span className="stat-ime">{t('ch_total_attempts')}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-broj">{formatVrijeme(proteklo)}</span>
-            <span className="stat-ime">{t('ch_total_time')}</span>
-          </div>
-        </div>
+        {ishod === 'lost_first' && <p className="poruka neuspjeh">{t('ch_lost_first')}</p>}
+        {ishod === 'time_up' && <p className="poruka neuspjeh">{t('ch_time_up')}</p>}
+        {!ishod && <p className="poruka uspjeh">{t('ch_complete')}</p>}
 
-        {rezultat === 'win' && <p className="poruka uspjeh">{t('ch_you_win')}</p>}
-        {rezultat === 'lose' && <p className="poruka neuspjeh">{t('ch_you_lose')}</p>}
-        {rezultat === 'draw' && <p className="poruka">{t('ch_draw')}</p>}
-        {!protivnikGotov && <p className="poruka">{t('ch_waiting_result')}</p>}
+        {!ishod && (
+          <div className="statistika">
+            <div className="stat">
+              <span className="stat-broj">{ukupnoPokusaja}</span>
+              <span className="stat-ime">{t('ch_total_attempts')}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-broj">{formatVrijeme(proteklo)}</span>
+              <span className="stat-ime">{t('ch_total_time')}</span>
+            </div>
+          </div>
+        )}
+
+        {r === 'win' && <p className="poruka uspjeh">{t('ch_you_win')}</p>}
+        {r === 'lose' && <p className="poruka neuspjeh">{t('ch_you_lose')}</p>}
+        {r === 'draw' && <p className="poruka">{t('ch_draw')}</p>}
+        {r === null && !ishod && (
+          <p className="poruka">{jaPrvi ? t('ch_you_first') : t('ch_waiting_result')}</p>
+        )}
 
         <button className="gumb" onClick={onNatrag}>
           {t('back')}
@@ -263,6 +306,13 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
           <span className="stat-ime">{t('ch_total_time')}</span>
         </div>
       </div>
+
+      {/* Online "manje pokušaja": dodatno vrijeme otkucava kad je protivnik prvi završio */}
+      {graceOstalo !== null && (
+        <p className="poruka neuspjeh">
+          ⏳ {t('ch_grace_left')}: {formatVrijeme(graceOstalo)}
+        </p>
+      )}
 
       {poruka && <p className="poruka">{poruka}</p>}
 

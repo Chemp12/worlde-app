@@ -140,6 +140,25 @@
   border-radius: 8px;
   cursor: pointer;
 }
+.iz-akcije {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.iz-odbij {
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ff6b5e;
+  background: transparent;
+  border: 2px solid #b03a2e;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.iz-odbij:hover {
+  background: #b03a2e;
+  color: #ffffff;
+}
 .iz-win {
   color: var(--accent);
   font-weight: bold;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
 import { slucajneRijeci } from './rijeci'
+import { perspektiva, jeOdlucen, rezultat } from './izazovLogika'
 import Avatar from './Avatar'
 import './modal.css'
 import './Izazovi.css'
@@ -16,11 +17,11 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   const [prijatelji, setPrijatelji] = useState([]) // popis prijatelja za padajući izbornik
   const [odabrani, setOdabrani] = useState('')     // user_id odabranog prijatelja
   const [kriterij, setKriterij] = useState('pokusaji')
+  const [tip, setTip] = useState('offline')        // 'offline' | 'online'
   const [brojRijeci, setBrojRijeci] = useState(10) // koliko riječi u izazovu
   const [poruka, setPoruka] = useState('')
 
   async function ucitaj() {
-    // 1) Moji izazovi (kao izazivač ili protivnik)
     const { data } = await supabase
       .from('izazovi')
       .select('*')
@@ -29,13 +30,11 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
     const lista = data || []
     setIzazovi(lista)
 
-    // 2) Imena/avatari svih uključenih igrača
     const ids = new Set()
     lista.forEach((iz) => {
       ids.add(iz.izazivac)
       ids.add(iz.protivnik)
     })
-    // 3) Prijatelji (za slanje novog izazova)
     const { data: pr } = await supabase
       .from('prijateljstva')
       .select('posiljatelj, primatelj, status')
@@ -70,6 +69,8 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
       protivnik: odabrani,
       rijeci,
       kriterij,
+      tip,
+      status: 'na_cekanju', // čeka da protivnik prihvati
     })
     if (error) {
       setPoruka('❌ ' + error.message)
@@ -80,42 +81,40 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
     ucitaj()
   }
 
-  // Pogled iz MOJE perspektive na jedan izazov.
-  function moje(iz) {
-    const jaIzazivac = iz.izazivac === korisnik.id
-    return {
-      protivnikId: jaIzazivac ? iz.protivnik : iz.izazivac,
-      mojGotov: jaIzazivac ? iz.izazivac_gotov : iz.protivnik_gotov,
-      protivnikGotov: jaIzazivac ? iz.protivnik_gotov : iz.izazivac_gotov,
-      mojaVrijednost:
-        iz.kriterij === 'vrijeme'
-          ? jaIzazivac ? iz.izazivac_vrijeme : iz.protivnik_vrijeme
-          : jaIzazivac ? iz.izazivac_pokusaji : iz.protivnik_pokusaji,
-      protivnikVrijednost:
-        iz.kriterij === 'vrijeme'
-          ? jaIzazivac ? iz.protivnik_vrijeme : iz.izazivac_vrijeme
-          : jaIzazivac ? iz.protivnik_pokusaji : iz.izazivac_pokusaji,
-    }
+  async function prihvati(iz) {
+    await supabase.from('izazovi').update({ status: 'prihvacen' }).eq('id', iz.id)
+    ucitaj()
   }
-
-  // Podijeli izazove u tri skupine
-  const zaOdigrati = izazovi.filter((iz) => !moje(iz).mojGotov)
-  const cekaju = izazovi.filter((iz) => moje(iz).mojGotov && !moje(iz).protivnikGotov)
-  const zavrseni = izazovi.filter((iz) => moje(iz).mojGotov && moje(iz).protivnikGotov)
+  async function odbij(iz) {
+    // Ne brišemo (nema DELETE pravila u bazi) -> označimo kao odbijen pa ga sakrijemo.
+    await supabase.from('izazovi').update({ status: 'odbijen' }).eq('id', iz.id)
+    ucitaj()
+  }
 
   function imeProtivnika(iz) {
-    return profili[moje(iz).protivnikId]?.username || '...'
+    return profili[perspektiva(iz, korisnik.id).protivnikId]?.username || '...'
   }
   function avatarProtivnika(iz) {
-    return profili[moje(iz).protivnikId]?.avatar_url
+    return profili[perspektiva(iz, korisnik.id).protivnikId]?.avatar_url
   }
 
-  // Redak izazova s avatarom protivnika i (po želji) desnim sadržajem.
+  // Podjela izazova u skupine
+  const zahtjevi = izazovi.filter((iz) => iz.status === 'na_cekanju' && iz.protivnik === korisnik.id)
+  const cekaPrihvat = izazovi.filter((iz) => iz.status === 'na_cekanju' && iz.izazivac === korisnik.id)
+  const prihvaceni = izazovi.filter((iz) => iz.status === 'prihvacen')
+  const zavrseni = prihvaceni.filter((iz) => jeOdlucen(iz, korisnik.id))
+  const zaOdigrati = prihvaceni.filter(
+    (iz) => !jeOdlucen(iz, korisnik.id) && !perspektiva(iz, korisnik.id).mojGotov
+  )
+  const cekaju = prihvaceni.filter(
+    (iz) => !jeOdlucen(iz, korisnik.id) && perspektiva(iz, korisnik.id).mojGotov
+  )
+
+  // Redak izazova s avatarom, imenom, detaljima i desnim sadržajem (gumb/rezultat).
   function redak(iz, desno) {
-    // Detalji izazova: koliko riječi + po čemu se pobjeđuje.
-    const kriterijTekst =
-      iz.kriterij === 'vrijeme' ? t('ch_crit_time') : t('ch_crit_attempts')
-    const detalji = `${t('ch_words_label', { n: iz.rijeci.length })} · ${kriterijTekst}`
+    const kriterijTekst = iz.kriterij === 'vrijeme' ? t('ch_crit_time') : t('ch_crit_attempts')
+    const tipEmoji = iz.tip === 'online' ? '🟢' : '📴'
+    const kritEmoji = iz.kriterij === 'vrijeme' ? '⏱️' : '🎯'
     return (
       <div className="iz-red" key={iz.id}>
         <span className="iz-osoba">
@@ -123,7 +122,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
           <span className="iz-osoba-tekst">
             <span className="iz-ime">{imeProtivnika(iz)}</span>
             <span className="iz-detalji">
-              {iz.kriterij === 'vrijeme' ? '⏱️' : '🎯'} {detalji}
+              {tipEmoji} {t('ch_words_label', { n: iz.rijeci.length })} · {kritEmoji} {kriterijTekst}
             </span>
           </span>
         </span>
@@ -133,9 +132,9 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   }
 
   function rezultatOznaka(iz) {
-    const m = moje(iz)
-    if (m.mojaVrijednost < m.protivnikVrijednost) return <span className="iz-win">{t('ch_you_win')}</span>
-    if (m.mojaVrijednost > m.protivnikVrijednost) return <span className="iz-lose">{t('ch_you_lose')}</span>
+    const r = rezultat(iz, korisnik.id)
+    if (r === 'win') return <span className="iz-win">{t('ch_you_win')}</span>
+    if (r === 'lose') return <span className="iz-lose">{t('ch_you_lose')}</span>
     return <span className="iz-draw">{t('ch_draw')}</span>
   }
 
@@ -167,6 +166,20 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
                 </option>
               ))}
             </select>
+
+            {/* Vrsta: offline / online */}
+            <span className="iz-oznaka">{t('ch_type')}</span>
+            <div className="iz-kriterij">
+              <button className={tip === 'offline' ? 'aktivan' : ''} onClick={() => setTip('offline')}>
+                {t('ch_offline')}
+              </button>
+              <button className={tip === 'online' ? 'aktivan' : ''} onClick={() => setTip('online')}>
+                {t('ch_online')}
+              </button>
+            </div>
+
+            {/* Kriterij pobjede */}
+            <span className="iz-oznaka">{t('ch_criterion')}</span>
             <div className="iz-kriterij">
               <button
                 className={kriterij === 'pokusaji' ? 'aktivan' : ''}
@@ -215,6 +228,26 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
         )}
         {poruka && <p className="iz-poruka">{poruka}</p>}
 
+        {/* Zahtjevi (netko me izazvao — prihvati ili odbij) */}
+        {zahtjevi.length > 0 && (
+          <>
+            <h3 className="iz-naslov">{t('ch_requests')}</h3>
+            {zahtjevi.map((iz) =>
+              redak(
+                iz,
+                <span className="iz-akcije">
+                  <button className="iz-igraj" onClick={() => prihvati(iz)}>
+                    {t('ch_accept')}
+                  </button>
+                  <button className="iz-odbij" onClick={() => odbij(iz)}>
+                    {t('ch_decline')}
+                  </button>
+                </span>
+              )
+            )}
+          </>
+        )}
+
         {/* Za odigrati */}
         {zaOdigrati.length > 0 && (
           <>
@@ -230,11 +263,19 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
           </>
         )}
 
-        {/* Čeka protivnika */}
+        {/* Čeka protivnika (ja završio) */}
         {cekaju.length > 0 && (
           <>
             <h3 className="iz-naslov">{t('ch_waiting')}</h3>
             {cekaju.map((iz) => redak(iz, <span className="iz-info">⏳</span>))}
+          </>
+        )}
+
+        {/* Poslano — čeka da protivnik prihvati */}
+        {cekaPrihvat.length > 0 && (
+          <>
+            <h3 className="iz-naslov">{t('ch_awaiting_accept')}</h3>
+            {cekaPrihvat.map((iz) => redak(iz, <span className="iz-info">✉️</span>))}
           </>
         )}
 
