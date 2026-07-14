@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
-import { BROJ_STUPACA, DOZVOLJENE_RIJECI, ocijeniRijec } from './rijeci'
+import { BROJ_STUPACA, jeDozvoljena, ocijeniRijec } from './rijeci'
 import { graceRokMs, rezultat as izracunajRezultat } from './izazovLogika'
 import './App.css'
 import './Izazovi.css'
@@ -174,7 +174,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
         zatresi()
         return
       }
-      if (!DOZVOLJENE_RIJECI.has(trenutni)) {
+      if (!jeDozvoljena('en', trenutni)) {
         setPoruka(t('not_in_list'))
         zatresi()
         return

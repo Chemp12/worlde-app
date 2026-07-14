@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import { NACINI } from './moduli'
 import { VARIJANTE, varijantaPoId } from './varijante'
 import { useJezik } from './i18n'
-import { BROJ_STUPACA, DOZVOLJENE_RIJECI, TAJNE_RIJECI, ocijeniRijec } from './rijeci'
+import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, ZADANI_JEZIK } from './rijeci'
 import Avatar from './Avatar'
 import Prijava from './Prijava'
 import HubVarijanti from './HubVarijanti'
@@ -11,7 +11,6 @@ import Pocetna from './Pocetna'
 import IgraIzazov from './IgraIzazov'
 import './App.css'
 
-const TRAJANJE_OTKRIVANJA = 1700 // ms: koliko traje okretanje cijelog reda
 const KLJUC_STATISTIKE = 'wordle-statistika'
 const KLJUC_NACINA = 'wordle-nacin'
 const POCETNI_DATUM = new Date('2022-01-01') // dan 0 naše igre
@@ -73,34 +72,45 @@ function sljedeciSeed(seed) {
   return (seed * 1103515245 + 12345) & 0x7fffffff
 }
 
-// Odaberi 'koliko' RAZLIČITIH riječi počevši od danog sjemena.
-function odaberiRijeci(koliko, seed) {
+// Odaberi 'koliko' RAZLIČITIH riječi iz danog popisa (pool), počevši od sjemena.
+function odaberiRijeci(koliko, seed, pool) {
   const rijeci = []
   const koristeni = new Set()
   let s = Math.abs(seed) + 1
-  while (rijeci.length < koliko) {
+  while (rijeci.length < koliko && koristeni.size < pool.length) {
     s = sljedeciSeed(s)
-    const index = s % TAJNE_RIJECI.length
+    const index = s % pool.length
     if (!koristeni.has(index)) {
       koristeni.add(index)
-      rijeci.push(TAJNE_RIJECI[index])
+      rijeci.push(pool[index])
     }
   }
   return rijeci
 }
 
-// Riječi za periodički mod (dnevni/tjedni/mjesečni). Sjeme spaja broj razdoblja
-// i "pomak" varijante -> svaka varijanta ima svoj set riječi istog dana.
-function rijeciZaNacin(nacin, varijanta) {
+// Duljina riječi za danu varijantu + mod.
+// Klasik: dnevni 5, tjedni 6, mjesečni 8, neograničeni = koliko korisnik izabere.
+// Ostale varijante: uvijek 5 slova.
+function duljinaZa(varijanta, nacin, duljinaUnlimited) {
+  if (varijanta.id !== 'klasik') return 5
+  if (nacin === 'weekly') return 6
+  if (nacin === 'monthly') return 8
+  if (nacin === 'unlimited') return duljinaUnlimited
+  return 5 // daily
+}
+
+// Riječi za periodički mod (dnevni/tjedni/mjesečni). Sjeme spaja broj razdoblja,
+// "pomak" varijante i duljinu -> svaka varijanta ima svoj set riječi istog dana.
+function rijeciZaNacin(nacin, varijanta, jezik, duljina) {
   const n = periodId(nacin)
   const pomakVarijante = VARIJANTE.findIndex((v) => v.id === varijanta.id)
-  const seed = n * 1000 + (pomakVarijante + 1) * 97
-  return odaberiRijeci(varijanta.brojRijeci, seed)
+  const seed = n * 1000 + (pomakVarijante + 1) * 97 + duljina * 7
+  return odaberiRijeci(varijanta.brojRijeci, seed, poolRijeci(jezik, duljina))
 }
 
 // Nasumične riječi (neograničeni mod).
-function nasumicneRijeci(koliko) {
-  return odaberiRijeci(koliko, Math.floor(Math.random() * 2000000000))
+function nasumicneRijeci(koliko, jezik, duljina) {
+  return slucajneRijeci(koliko, jezik, duljina)
 }
 
 // Kada se dani način "resetira" (dobiva novu riječ)? Vrati taj datum/vrijeme.
@@ -169,10 +179,14 @@ function normalizirajStatistike(ucitano) {
   return rezultat
 }
 
-// Učitaj (tajne riječi + spremljeni napredak) za danu varijantu i način (po računu).
-function ucitajStanje(varijanta, nacin, userId) {
-  const kljuc = `wordle-igra-${varijanta.id}-${nacin}-${userId}`
-  const spremljeno = localStorage.getItem(kljuc)
+// Ključ pod kojim pamtimo napredak (uključuje jezik i duljinu -> različite igre se ne miješaju).
+function kljucIgre(varijanta, nacin, jezik, duljina, userId) {
+  return `wordle-igra-${varijanta.id}-${nacin}-${jezik}-${duljina}-${userId}`
+}
+
+// Učitaj (tajne riječi + spremljeni napredak) za danu varijantu, način, jezik i duljinu.
+function ucitajStanje(varijanta, nacin, userId, jezik, duljina) {
+  const spremljeno = localStorage.getItem(kljucIgre(varijanta, nacin, jezik, duljina, userId))
   if (spremljeno) {
     const p = JSON.parse(spremljeno)
     if (nacin === 'unlimited') {
@@ -180,11 +194,14 @@ function ucitajStanje(varijanta, nacin, userId) {
     }
     if (p.period === periodId(nacin)) {
       // isto razdoblje -> nastavi tamo gdje si stao
-      return { tajne: rijeciZaNacin(nacin, varijanta), pokusaji: p.pokusaji }
+      return { tajne: rijeciZaNacin(nacin, varijanta, jezik, duljina), pokusaji: p.pokusaji }
     }
   }
   // ništa spremljeno ili novo razdoblje -> čista igra
-  const tajne = nacin === 'unlimited' ? nasumicneRijeci(varijanta.brojRijeci) : rijeciZaNacin(nacin, varijanta)
+  const tajne =
+    nacin === 'unlimited'
+      ? nasumicneRijeci(varijanta.brojRijeci, jezik, duljina)
+      : rijeciZaNacin(nacin, varijanta, jezik, duljina)
   return { tajne, pokusaji: [] }
 }
 
@@ -216,9 +233,24 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   const brojRedova = varijanta.brojRedova
   const brojRijeci = varijanta.brojRijeci
   const [nacin, setNacin] = useState(pocetniMod)
+  const [jezik] = useState(ZADANI_JEZIK)          // jezik riječi (Faza 2 dodaje izbornik)
+  const [duljinaUnlimited, setDuljinaUnlimited] = useState(5) // duljina za neograničeni mod
+
+  // Duljina riječi (= broj stupaca ploče) za trenutnu varijantu + mod.
+  const brojStupaca = duljinaZa(varijanta, nacin, duljinaUnlimited)
 
   // Početno stanje (riječi + napredak) učitaj SAMO jednom, na startu.
-  const pocetno = useMemo(() => ucitajStanje(varijanta, pocetniMod, korisnik.id), [])
+  const pocetno = useMemo(
+    () =>
+      ucitajStanje(
+        varijanta,
+        pocetniMod,
+        korisnik.id,
+        ZADANI_JEZIK,
+        duljinaZa(varijanta, pocetniMod, 5)
+      ),
+    []
+  )
 
   const [tajne, setTajne] = useState(pocetno.tajne)
   const [pokusaji, setPokusaji] = useState(pocetno.pokusaji)
@@ -251,13 +283,13 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
 
   // Spremi napredak trenutne varijante+načina kad se promijeni.
   useEffect(() => {
-    const kljuc = `wordle-igra-${varijanta.id}-${nacin}-${korisnik.id}`
+    const kljuc = kljucIgre(varijanta, nacin, jezik, brojStupaca, korisnik.id)
     const podaci =
       nacin === 'unlimited'
         ? { rijeci: tajne, pokusaji }
         : { period: periodId(nacin), pokusaji }
     localStorage.setItem(kljuc, JSON.stringify(podaci))
-  }, [pokusaji, nacin, tajne, korisnik.id, varijanta.id])
+  }, [pokusaji, nacin, tajne, korisnik.id, varijanta.id, jezik, brojStupaca])
 
   // Pri prijavi: učitaj statistiku iz oblaka da prati račun na svim uređajima.
   useEffect(() => {
@@ -308,9 +340,10 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     return () => clearInterval(id)
   }, [nacin])
 
-  // Prebaci na drugi način: učitaj njegove riječi i napredak.
+  // Prebaci na drugi način: učitaj njegove riječi i napredak (duljina ovisi o modu).
   function promijeniNacin(noviNacin) {
-    const stanje = ucitajStanje(varijanta, noviNacin, korisnik.id)
+    const novaDuljina = duljinaZa(varijanta, noviNacin, duljinaUnlimited)
+    const stanje = ucitajStanje(varijanta, noviNacin, korisnik.id, jezik, novaDuljina)
     setNacin(noviNacin)
     setTajne(stanje.tajne)
     setPokusaji(stanje.pokusaji)
@@ -322,9 +355,22 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     localStorage.setItem(KLJUC_NACINA, noviNacin)
   }
 
+  // Promijeni duljinu riječi (samo neograničeni mod) -> nova/spremljena igra te duljine.
+  function promijeniDuljinu(novaDuljina) {
+    setDuljinaUnlimited(novaDuljina)
+    const stanje = ucitajStanje(varijanta, 'unlimited', korisnik.id, jezik, novaDuljina)
+    setTajne(stanje.tajne)
+    setPokusaji(stanje.pokusaji)
+    setTrenutni('')
+    setPoruka('')
+    setRedZaAnimaciju(null)
+    setAnimira(false)
+    setPrikaziKraj(jeGotovaIgra(stanje.pokusaji, stanje.tajne, brojRedova))
+  }
+
   // Nova igra (samo za neograničeni način).
   function novaNeogranicena() {
-    setTajne(nasumicneRijeci(brojRijeci))
+    setTajne(nasumicneRijeci(brojRijeci, jezik, duljinaUnlimited))
     setPokusaji([])
     setTrenutni('')
     setPoruka('')
@@ -417,12 +463,12 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     if (gotovo || animira) return // dok se red okreće, ignoriraj sav unos
 
     if (tipka === 'ENTER') {
-      if (trenutni.length !== BROJ_STUPACA) {
+      if (trenutni.length !== brojStupaca) {
         setPoruka(t('too_few'))
         zatresi()
         return
       }
-      if (!DOZVOLJENE_RIJECI.has(trenutni)) {
+      if (!jeDozvoljena(jezik, trenutni)) {
         setPoruka(t('not_in_list'))
         zatresi()
         return
@@ -433,14 +479,17 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
       setTrenutni('')
       setPoruka('')
 
+      // Trajanje okretanja ovisi o broju stupaca (zadnji stupac + trajanje okreta).
+      const trajanje = (brojStupaca - 1) * 280 + 250 + 350
+
       // Pokreni animaciju okretanja za ovaj red (na svim pločama) i otkrivaj boje stupac po stupac.
       setRedZaAnimaciju(pokusaji.length)
       setOtkriveno(0)
       setAnimira(true)
-      for (let i = 0; i < BROJ_STUPACA; i++) {
+      for (let i = 0; i < brojStupaca; i++) {
         setTimeout(() => setOtkriveno(i + 1), i * 280 + 250)
       }
-      setTimeout(() => setAnimira(false), TRAJANJE_OTKRIVANJA)
+      setTimeout(() => setAnimira(false), trajanje)
 
       // Pobjeda = SVE riječi pogođene. Poraz = potrošeni svi redovi bez pogotka svih.
       const pobjeda = tajne.every((t) => noviPokusaji.includes(t))
@@ -449,12 +498,12 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
         setTimeout(() => {
           azurirajStatistiku(pobjeda, noviPokusaji.length)
           setPrikaziKraj(true)
-        }, TRAJANJE_OTKRIVANJA)
+        }, trajanje)
       }
     } else if (tipka === 'BACK') {
       setTrenutni(trenutni.slice(0, -1))
     } else if (/^[A-Z]$/.test(tipka)) {
-      if (trenutni.length < BROJ_STUPACA) {
+      if (trenutni.length < brojStupaca) {
         setTrenutni(trenutni + tipka)
       }
     }
@@ -470,7 +519,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     const cist = event.target.value
       .toUpperCase()
       .replace(/[^A-Z]/g, '') // makni sve što nije slovo
-      .slice(0, BROJ_STUPACA)
+      .slice(0, brojStupaca)
     setTrenutni(cist)
   }
 
@@ -521,7 +570,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
 
           return (
             <div className={`red ${jeTrenutni && tresi ? 'tresi' : ''}`} key={indexReda}>
-              {Array.from({ length: BROJ_STUPACA }).map((_, indexSlova) => {
+              {Array.from({ length: brojStupaca }).map((_, indexSlova) => {
                 const slovo = slova[indexSlova] || ''
                 let klase = 'kvadratic'
                 if (jePotvrdjen) {
@@ -580,6 +629,24 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
 
       <h1>{varijanta.ikona} {t('var_' + varijanta.id + '_ime').toUpperCase()}</h1>
       <p className="podnaslov">{podnaslovZa(nacin, t)}</p>
+
+      {/* Izbor duljine riječi — samo Klasik neograničeni */}
+      {nacin === 'unlimited' && varijanta.id === 'klasik' && (
+        <div className="duljina-izbor">
+          <span className="duljina-oznaka">{t('word_length')}</span>
+          <div className="duljina-gumbi">
+            {[4, 5, 6, 7, 8].map((d) => (
+              <button
+                key={d}
+                className={`duljina-gumb ${brojStupaca === d ? 'aktivan' : ''}`}
+                onClick={() => promijeniDuljinu(d)}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="statistika">
         <div className="stat">

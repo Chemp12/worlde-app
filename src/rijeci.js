@@ -1,31 +1,53 @@
-// Zajednička logika oko riječi — dijele je i glavna igra (App.jsx) i izazovi.
-import dozvoljeneTekst from './dozvoljene-rijeci.txt?raw' // ~15k riječi koje smiješ utipkati
-import tajneTekst from './tajne-rijeci.txt?raw'           // ~2,3k riječi koje mogu biti rješenje
+// Zajednička logika oko riječi — dijele je glavna igra (App.jsx) i izazovi.
+// Svaki jezik ima svoj popis čestih riječi (4–8 slova), služi za rješenja i za dozvoljene pokušaje.
+import en from './rijeci-en.txt?raw'
 
-export const BROJ_STUPACA = 5 // duljina riječi
+export const BROJ_STUPACA = 5 // zadana duljina (izazovi zasad koriste 5)
 
-export const DOZVOLJENE_RIJECI = new Set(
-  dozvoljeneTekst.split('\n').map((r) => r.trim().toUpperCase())
-)
+// Popisi po jeziku. (Faza 2 dodaje es, fr, de, it, hr.)
+const POPISI = {
+  en: parsiraj(en),
+}
 
-export const TAJNE_RIJECI = tajneTekst
-  .split('\n')
-  .map((r) => r.trim().toUpperCase())
-  .filter((r) => r.length === BROJ_STUPACA)
+export const ZADANI_JEZIK = 'en'
+
+function parsiraj(txt) {
+  return txt.split(/\r?\n/).map((r) => r.trim().toUpperCase()).filter(Boolean)
+}
+
+// Popis riječi zadane duljine za zadani jezik (računa se jednom pa se pamti).
+const cachePool = {}
+export function poolRijeci(jezik, duljina) {
+  const kljuc = jezik + ':' + duljina
+  if (!cachePool[kljuc]) {
+    const popis = POPISI[jezik] || POPISI[ZADANI_JEZIK]
+    cachePool[kljuc] = popis.filter((w) => w.length === duljina)
+  }
+  return cachePool[kljuc]
+}
+
+// Brza provjera je li utipkana riječ dozvoljena (za taj jezik i tu duljinu).
+const cacheSet = {}
+export function jeDozvoljena(jezik, rijec) {
+  const kljuc = jezik + ':' + rijec.length
+  if (!cacheSet[kljuc]) cacheSet[kljuc] = new Set(poolRijeci(jezik, rijec.length))
+  return cacheSet[kljuc].has(rijec)
+}
 
 // Ocijeni pokušaj u odnosu na tajnu riječ: 'tocno' / 'skoro' / 'krivo' za svako slovo.
-// Dvije faze: prvo točna mjesta, pa "žuta" (da se duple slova ispravno broje).
+// Radi za bilo koju duljinu (koristi duljinu tajne riječi).
 export function ocijeniRijec(pokusaj, tajna) {
-  const rezultat = Array(BROJ_STUPACA).fill('krivo')
+  const n = tajna.length
+  const rezultat = Array(n).fill('krivo')
   const slovaTajne = tajna.split('')
 
-  for (let i = 0; i < BROJ_STUPACA; i++) {
+  for (let i = 0; i < n; i++) {
     if (pokusaj[i] === slovaTajne[i]) {
       rezultat[i] = 'tocno'
       slovaTajne[i] = null
     }
   }
-  for (let i = 0; i < BROJ_STUPACA; i++) {
+  for (let i = 0; i < n; i++) {
     if (rezultat[i] === 'tocno') continue
     const gdje = slovaTajne.indexOf(pokusaj[i])
     if (gdje !== -1) {
@@ -36,15 +58,16 @@ export function ocijeniRijec(pokusaj, tajna) {
   return rezultat
 }
 
-// Odaberi 'koliko' RAZLIČITIH nasumičnih riječi (za izazove).
-export function slucajneRijeci(koliko) {
+// 'koliko' RAZLIČITIH nasumičnih riječi zadanog jezika i duljine (za unlimited / izazove).
+export function slucajneRijeci(koliko, jezik = ZADANI_JEZIK, duljina = BROJ_STUPACA) {
+  const pool = poolRijeci(jezik, duljina)
   const rijeci = []
   const koristeni = new Set()
-  while (rijeci.length < koliko && koristeni.size < TAJNE_RIJECI.length) {
-    const index = Math.floor(Math.random() * TAJNE_RIJECI.length)
+  while (rijeci.length < koliko && koristeni.size < pool.length) {
+    const index = Math.floor(Math.random() * pool.length)
     if (!koristeni.has(index)) {
       koristeni.add(index)
-      rijeci.push(TAJNE_RIJECI[index])
+      rijeci.push(pool[index])
     }
   }
   return rijeci

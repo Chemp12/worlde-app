@@ -132,6 +132,43 @@ h1 {
   gap: 4px;
 }
 
+/* Izbor duljine riječi (Klasik neograničeni) */
+.duljina-izbor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 8px;
+}
+.duljina-oznaka {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.duljina-gumbi {
+  display: flex;
+  gap: 6px;
+}
+.duljina-gumb {
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text);
+  background: var(--surface2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.duljina-gumb:hover {
+  background: var(--surface3);
+}
+.duljina-gumb.aktivan {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 /* Traka sa statistikom */
 .statistika {
   display: flex;
@@ -266,6 +303,9 @@ h1 {
 .red .kvadratic:nth-child(3).otkrij { animation-delay: 0.56s; }
 .red .kvadratic:nth-child(4).otkrij { animation-delay: 0.84s; }
 .red .kvadratic:nth-child(5).otkrij { animation-delay: 1.12s; }
+.red .kvadratic:nth-child(6).otkrij { animation-delay: 1.40s; }
+.red .kvadratic:nth-child(7).otkrij { animation-delay: 1.68s; }
+.red .kvadratic:nth-child(8).otkrij { animation-delay: 1.96s; }
 
 /* "Pop" kad upišeš slovo */
 @keyframes pop {
