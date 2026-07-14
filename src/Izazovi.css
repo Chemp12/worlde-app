@@ -101,17 +101,6 @@
   border-color: var(--accent);
 }
 
-/* Desni dio retka izazova: broj riječi + akcija/rezultat */
-.iz-desno {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-.iz-broj {
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
 
 /* Redak izazova */
 .iz-red {
@@ -124,8 +113,22 @@
 .iz-osoba {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  min-width: 0; /* dopusti skraćivanje dugih imena */
+}
+.iz-osoba-tekst {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.iz-ime {
   font-weight: bold;
+}
+.iz-detalji {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
 }
 .iz-igraj {
   padding: 8px 18px;

@@ -112,16 +112,22 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
 
   // Redak izazova s avatarom protivnika i (po želji) desnim sadržajem.
   function redak(iz, desno) {
+    // Detalji izazova: koliko riječi + po čemu se pobjeđuje.
+    const kriterijTekst =
+      iz.kriterij === 'vrijeme' ? t('ch_crit_time') : t('ch_crit_attempts')
+    const detalji = `${t('ch_words_label', { n: iz.rijeci.length })} · ${kriterijTekst}`
     return (
       <div className="iz-red" key={iz.id}>
         <span className="iz-osoba">
-          <Avatar url={avatarProtivnika(iz)} ime={imeProtivnika(iz)} size={30} />
-          {imeProtivnika(iz)}
+          <Avatar url={avatarProtivnika(iz)} ime={imeProtivnika(iz)} size={34} />
+          <span className="iz-osoba-tekst">
+            <span className="iz-ime">{imeProtivnika(iz)}</span>
+            <span className="iz-detalji">
+              {iz.kriterij === 'vrijeme' ? '⏱️' : '🎯'} {detalji}
+            </span>
+          </span>
         </span>
-        <span className="iz-desno">
-          <span className="iz-broj">{t('ch_words_label', { n: iz.rijeci.length })}</span>
-          {desno}
-        </span>
+        {desno}
       </div>
     )
   }
