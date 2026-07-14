@@ -6,12 +6,14 @@ import Ljestvica from './Ljestvica'
 import Postavke from './Postavke'
 import Prijatelji from './Prijatelji'
 import Izazovi from './Izazovi'
+import Upute from './Upute'
 import './Pocetna.css'
 
 // Prvi ekran (početna): biraš VRSTU igre (koliko riječi pogađaš odjednom).
 function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdjava }) {
   const { t } = useJezik()
   const [modal, setModal] = useState(null) // 'prijatelji' | 'ljestvica' | 'postavke' | null
+  const [upute, setUpute] = useState(null)  // varijanta čije upute gledamo
 
   return (
     <div className="pocetna">
@@ -23,18 +25,24 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
       <h1 className="pocetna-logo">WORDLE</h1>
       <p className="pocetna-podnaslov">{t('choose_variant')}</p>
 
-      {/* Kartice varijanti */}
+      {/* Kartice varijanti (+ gumb "?" za upute) */}
       <div className="mod-kartice">
         {VARIJANTE.map((v) => (
-          <button
-            key={v.id}
-            className="mod-kartica"
-            onClick={() => onOdaberiVarijantu(v.id)}
-          >
-            <span className="mod-ikona">{v.ikona}</span>
-            <span className="mod-ime">{t('var_' + v.id + '_ime')}</span>
-            <span className="mod-opis">{t('var_' + v.id + '_opis')}</span>
-          </button>
+          <div className="mod-kartica-wrap" key={v.id}>
+            <button
+              className="mod-info"
+              onClick={() => setUpute(v)}
+              title={t('how_to_play')}
+              aria-label={t('how_to_play')}
+            >
+              ?
+            </button>
+            <button className="mod-kartica" onClick={() => onOdaberiVarijantu(v.id)}>
+              <span className="mod-ikona">{v.ikona}</span>
+              <span className="mod-ime">{t('var_' + v.id + '_ime')}</span>
+              <span className="mod-opis">{t('var_' + v.id + '_opis')}</span>
+            </button>
+          </div>
         ))}
       </div>
 
@@ -53,6 +61,9 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
           {t('settings')}
         </button>
       </div>
+
+      {/* Upute za odabranu varijantu */}
+      {upute && <Upute varijanta={upute} onZatvori={() => setUpute(null)} />}
 
       {/* Skočni prozori */}
       {modal === 'izazovi' && (
