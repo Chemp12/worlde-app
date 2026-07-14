@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
 import { BROJ_STUPACA, DOZVOLJENE_RIJECI, ocijeniRijec } from './rijeci'
 import './App.css'
 import './Izazovi.css'
 
-const BROJ_REDOVA = 6 // svaka riječ = klasičnih 6 pokušaja
+const BROJ_REDOVA = 6            // svaka riječ = klasičnih 6 pokušaja
+const TRAJANJE_OTKRIVANJA = 1700 // ms: koliko traje okretanje cijelog reda
 
 const REDOVI_TIPKOVNICE = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -25,18 +26,27 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const rijeci = izazov.rijeci
   const ukupnoRijeci = rijeci.length
 
-  const [indexRijeci, setIndexRijeci] = useState(0)
-  const [pokusaji, setPokusaji] = useState([])
+  // Ključ pod kojim pamtimo napredak OVOG izazova za OVOG igrača.
+  const KLJUC = `wordle-izazov-${izazov.id}-${korisnik.id}`
+  // Učitaj spremljeni napredak SAMO jednom, na startu.
+  const pocetno = useMemo(() => {
+    const s = localStorage.getItem(KLJUC)
+    return s ? JSON.parse(s) : {}
+  }, [])
+
+  const [indexRijeci, setIndexRijeci] = useState(pocetno.indexRijeci ?? 0)
+  const [pokusaji, setPokusaji] = useState(pocetno.pokusaji ?? [])
+  const [ukupnoPokusaja, setUkupnoPokusaja] = useState(pocetno.ukupnoPokusaja ?? 0)
+  const [proteklo, setProteklo] = useState(pocetno.proteklo ?? 0) // ukupno sekundi (pamti se)
   const [trenutni, setTrenutni] = useState('')
   const [poruka, setPoruka] = useState('')
   const [tresi, setTresi] = useState(false)
-  const [pauza, setPauza] = useState(false) // kratka stanka između riječi
-  const [ukupnoPokusaja, setUkupnoPokusaja] = useState(0)
+  const [redZaAnimaciju, setRedZaAnimaciju] = useState(null)
+  const [otkriveno, setOtkriveno] = useState(0)
+  const [animira, setAnimira] = useState(false)
   const [gotovSve, setGotovSve] = useState(false)
-  const [proteklo, setProteklo] = useState(0) // sekunde (za prikaz štoperice)
   const [konacni, setKonacni] = useState(null) // red izazova nakon spremanja (za rezultat)
 
-  const startRef = useRef(Date.now()) // trenutak početka izazova
   const inputRef = useRef(null)
 
   const tajna = rijeci[indexRijeci]
@@ -45,21 +55,37 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   const izgubio = !pobijedio && pokusaji.length === BROJ_REDOVA
   const krajRijeci = pobijedio || izgubio
 
-  // Štoperica: kucaj svake sekunde dok izazov traje.
+  // Štoperica: broji sekunde SAMO dok je izazov otvoren (staje kad izađeš).
   useEffect(() => {
     if (gotovSve) return
-    const id = setInterval(() => {
-      setProteklo(Math.floor((Date.now() - startRef.current) / 1000))
-    }, 1000)
+    const id = setInterval(() => setProteklo((p) => p + 1), 1000)
     return () => clearInterval(id)
   }, [gotovSve])
+
+  // Pamti napredak (riječ, pokušaji, ukupno, vrijeme) na svaku promjenu.
+  useEffect(() => {
+    if (gotovSve) return
+    localStorage.setItem(
+      KLJUC,
+      JSON.stringify({ indexRijeci, pokusaji, ukupnoPokusaja, proteklo })
+    )
+  }, [indexRijeci, pokusaji, ukupnoPokusaja, proteklo, gotovSve, KLJUC])
+
+  // Rubni slučaj: ako je učitana riječ VEĆ gotova (igrač izašao usred okretanja
+  // zadnjeg poteza), na povratku prijeđi dalje da se ne zaglavi.
+  useEffect(() => {
+    if (!gotovSve && krajRijeci && redZaAnimaciju === null) {
+      const id = setTimeout(() => sljedecaRijec(pokusaji.length), 300)
+      return () => clearTimeout(id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   function zatresi() {
     setTresi(true)
     setTimeout(() => setTresi(false), 500)
   }
 
-  // Spremi konačni rezultat u bazu i dohvati stanje (je li protivnik gotov).
   async function spremiRezultat(pokusajaUkupno, vrijeme) {
     const jaIzazivac = izazov.izazivac === korisnik.id
     const polja = jaIzazivac
@@ -74,13 +100,13 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   function sljedecaRijec(pokusajaZaOvu) {
     const noviUkupno = ukupnoPokusaja + pokusajaZaOvu
     setUkupnoPokusaja(noviUkupno)
+    setRedZaAnimaciju(null)
+    setOtkriveno(0)
 
     if (indexRijeci + 1 >= ukupnoRijeci) {
-      // Gotovo — izračunaj vrijeme i spremi.
-      const vrijeme = Math.floor((Date.now() - startRef.current) / 1000)
-      setProteklo(vrijeme)
       setGotovSve(true)
-      spremiRezultat(noviUkupno, vrijeme)
+      localStorage.removeItem(KLJUC) // izazov gotov -> obriši spremljeni napredak
+      spremiRezultat(noviUkupno, proteklo)
     } else {
       setIndexRijeci(indexRijeci + 1)
       setPokusaji([])
@@ -90,7 +116,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   }
 
   function obradiTipku(tipka) {
-    if (krajRijeci || pauza || gotovSve) return
+    if (krajRijeci || animira || gotovSve) return
 
     if (tipka === 'ENTER') {
       if (trenutni.length !== BROJ_STUPACA) {
@@ -108,15 +134,23 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
       setTrenutni('')
       setPoruka('')
 
+      // Animacija okretanja reda (boje se otkrivaju stupac po stupac).
+      setRedZaAnimaciju(pokusaji.length)
+      setOtkriveno(0)
+      setAnimira(true)
+      for (let i = 0; i < BROJ_STUPACA; i++) {
+        setTimeout(() => setOtkriveno(i + 1), i * 280 + 250)
+      }
+      setTimeout(() => setAnimira(false), TRAJANJE_OTKRIVANJA)
+
       const rijesio = trenutni === tajna
       const potrosio = noviPokusaji.length === BROJ_REDOVA
       if (rijesio || potrosio) {
-        if (!rijesio) setPoruka(t('ch_word_was', { rijec: tajna }))
-        setPauza(true)
+        // Tek kad okretanje završi -> (prikaži riječ ako nije pogodio i) idi dalje.
         setTimeout(() => {
-          setPauza(false)
+          if (!rijesio) setPoruka(t('ch_word_was', { rijec: tajna }))
           sljedecaRijec(noviPokusaji.length)
-        }, 1100)
+        }, TRAJANJE_OTKRIVANJA)
       }
     } else if (tipka === 'BACK') {
       setTrenutni(trenutni.slice(0, -1))
@@ -126,10 +160,10 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
   }
 
   function fokusirajUnos() {
-    if (!krajRijeci && !pauza) inputRef.current?.focus()
+    if (!krajRijeci && !animira) inputRef.current?.focus()
   }
   function naInput(event) {
-    if (krajRijeci || pauza) return
+    if (krajRijeci || animira) return
     setTrenutni(event.target.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, BROJ_STUPACA))
   }
 
@@ -142,19 +176,21 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     }
     window.addEventListener('keydown', naPritisak)
     return () => window.removeEventListener('keydown', naPritisak)
-  }, [trenutni, pokusaji, krajRijeci, pauza, gotovSve, tajna])
+  }, [trenutni, pokusaji, krajRijeci, animira, gotovSve, tajna])
 
-  // Boje tipkovnice za TRENUTNU riječ
+  // Boje tipkovnice za TRENUTNU riječ (dok se red okreće, još ga ne bojamo).
   const statusSlova = {}
   const RANG = { krivo: 1, skoro: 2, tocno: 3 }
-  pokusaji.forEach((pokusaj) => {
+  const redovaZaBoje = animira ? pokusaji.length - 1 : pokusaji.length
+  for (let r = 0; r < redovaZaBoje; r++) {
+    const pokusaj = pokusaji[r]
     const ocjene = ocijeniRijec(pokusaj, tajna)
     pokusaj.split('').forEach((slovo, i) => {
       const novi = ocjene[i]
       const stari = statusSlova[slovo]
       if (!stari || RANG[novi] > RANG[stari]) statusSlova[slovo] = novi
     })
-  })
+  }
 
   // --- Završni ekran ---
   if (gotovSve) {
@@ -164,12 +200,12 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
       : false
     let rezultat = null
     if (konacni && protivnikGotov) {
-      const poljePokusaji = jaIzazivac ? 'izazivac_pokusaji' : 'protivnik_pokusaji'
-      const poljePokusajiP = jaIzazivac ? 'protivnik_pokusaji' : 'izazivac_pokusaji'
-      const poljeVrijeme = jaIzazivac ? 'izazivac_vrijeme' : 'protivnik_vrijeme'
-      const poljeVrijemeP = jaIzazivac ? 'protivnik_vrijeme' : 'izazivac_vrijeme'
-      const moja = konacni.kriterij === 'vrijeme' ? konacni[poljeVrijeme] : konacni[poljePokusaji]
-      const prot = konacni.kriterij === 'vrijeme' ? konacni[poljeVrijemeP] : konacni[poljePokusajiP]
+      const poljeP = jaIzazivac ? 'izazivac_pokusaji' : 'protivnik_pokusaji'
+      const poljePP = jaIzazivac ? 'protivnik_pokusaji' : 'izazivac_pokusaji'
+      const poljeV = jaIzazivac ? 'izazivac_vrijeme' : 'protivnik_vrijeme'
+      const poljeVP = jaIzazivac ? 'protivnik_vrijeme' : 'izazivac_vrijeme'
+      const moja = konacni.kriterij === 'vrijeme' ? konacni[poljeV] : konacni[poljeP]
+      const prot = konacni.kriterij === 'vrijeme' ? konacni[poljeVP] : konacni[poljePP]
       rezultat = moja < prot ? 'win' : moja > prot ? 'lose' : 'draw'
     }
 
@@ -242,7 +278,7 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
               obradiTipku('ENTER')
             }
           }}
-          readOnly={krajRijeci || pauza}
+          readOnly={krajRijeci || animira}
           autoCapitalize="characters"
           autoComplete="off"
           autoCorrect="off"
@@ -256,12 +292,18 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
             const jeTrenutni = indexReda === pokusaji.length
             const slova = jePotvrdjen ? pokusaji[indexReda] : jeTrenutni ? trenutni : ''
             const ocjene = jePotvrdjen ? ocijeniRijec(slova, tajna) : null
+            const jeOtkrivRed = jePotvrdjen && indexReda === redZaAnimaciju
             return (
               <div className={`red ${jeTrenutni && tresi ? 'tresi' : ''}`} key={indexReda}>
                 {Array.from({ length: BROJ_STUPACA }).map((_, i) => {
                   let klase = 'kvadratic'
-                  if (jePotvrdjen) klase += ` ${ocjene[i]}`
-                  else if (jeTrenutni && slova[i]) klase += ' upisano'
+                  if (jePotvrdjen) {
+                    const prikaziBoju = !jeOtkrivRed || i < otkriveno
+                    if (prikaziBoju) klase += ` ${ocjene[i]}`
+                    if (jeOtkrivRed) klase += ' otkrij'
+                  } else if (jeTrenutni && slova[i]) {
+                    klase += ' upisano'
+                  }
                   return (
                     <div className={klase} key={i}>
                       {slova[i] || ''}
