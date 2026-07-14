@@ -6,7 +6,7 @@ import Avatar from './Avatar'
 import './modal.css'
 import './Izazovi.css'
 
-const BROJ_RIJECI_IZAZOVA = 10
+const IZBORI_BROJA = [5, 10, 15, 20] // ponuđeni brojevi riječi
 
 function Izazovi({ korisnik, onIgraj, onZatvori }) {
   const { t } = useJezik()
@@ -15,6 +15,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   const [prijatelji, setPrijatelji] = useState([]) // popis prijatelja za padajući izbornik
   const [odabrani, setOdabrani] = useState('')     // user_id odabranog prijatelja
   const [kriterij, setKriterij] = useState('pokusaji')
+  const [brojRijeci, setBrojRijeci] = useState(10) // koliko riječi u izazovu
   const [poruka, setPoruka] = useState('')
 
   async function ucitaj() {
@@ -62,7 +63,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   async function posaljiIzazov() {
     if (!odabrani) return
     setPoruka('')
-    const rijeci = slucajneRijeci(BROJ_RIJECI_IZAZOVA)
+    const rijeci = slucajneRijeci(brojRijeci)
     const { error } = await supabase.from('izazovi').insert({
       izazivac: korisnik.id,
       protivnik: odabrani,
@@ -116,7 +117,10 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
           <Avatar url={avatarProtivnika(iz)} ime={imeProtivnika(iz)} size={30} />
           {imeProtivnika(iz)}
         </span>
-        {desno}
+        <span className="iz-desno">
+          <span className="iz-broj">{t('ch_words_label', { n: iz.rijeci.length })}</span>
+          {desno}
+        </span>
       </div>
     )
   }
@@ -170,6 +174,21 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
                 {t('ch_crit_time')}
               </button>
             </div>
+
+            {/* Broj riječi */}
+            <span className="iz-oznaka">{t('ch_word_count')}</span>
+            <div className="iz-kriterij">
+              {IZBORI_BROJA.map((n) => (
+                <button
+                  key={n}
+                  className={brojRijeci === n ? 'aktivan' : ''}
+                  onClick={() => setBrojRijeci(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+
             <button className="iz-posalji" onClick={posaljiIzazov} disabled={!odabrani}>
               {t('ch_send')}
             </button>

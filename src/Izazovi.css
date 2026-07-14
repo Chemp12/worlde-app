@@ -70,6 +70,25 @@
   font-size: 14px;
 }
 
+/* Oznaka iznad skupine gumba (npr. "Broj riječi") */
+.iz-oznaka {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Desni dio retka izazova: broj riječi + akcija/rezultat */
+.iz-desno {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.iz-broj {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* Redak izazova */
 .iz-red {
   display: flex;
