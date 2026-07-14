@@ -53,12 +53,10 @@ export function rezultat(iz, mojId) {
   if (!jeOdlucen(iz, mojId)) return null
   const p = perspektiva(iz, mojId)
 
-  // Na poteze: pobjeđuje manje ukupno pokušaja.
+  // Na poteze: pobjeđuje onaj tko je PRVI pogodio riječ.
   if (iz.tip === 'poteze') {
-    const jaIzazivac = iz.izazivac === mojId
-    const moj = jaIzazivac ? iz.poteza.ukupnoI : iz.poteza.ukupnoP
-    const prot = jaIzazivac ? iz.poteza.ukupnoP : iz.poteza.ukupnoI
-    return moj < prot ? 'win' : moj > prot ? 'lose' : 'draw'
+    if (!iz.poteza.pobjednik) return 'draw'
+    return iz.poteza.pobjednik === mojId ? 'win' : 'lose'
   }
 
   if (iz.tip === 'online' && iz.kriterij === 'vrijeme') {

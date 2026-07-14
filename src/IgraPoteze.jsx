@@ -22,52 +22,47 @@ function pocetnoStanje(izazov) {
     naPotezu: izazov.izazivac, // izazivač prvi
     guessI: [],
     guessP: [],
-    rijeseoI: false,
-    rijeseoP: false,
-    ukupnoI: 0,
-    ukupnoP: 0,
     gotovo: false,
+    pobjednik: null, // user_id prvog koji pogodi (ili null = neriješeno)
   }
 }
 
 // Primijeni jedan potez (čisti izračun novog stanja). Igra ga onaj tko je na potezu.
+// Pravilo: tko PRVI pogodi riječ -> odmah pobjeđuje.
 function primijeniPotez(stanje, izazov, mojId, guess) {
   const jaIzazivac = izazov.izazivac === mojId
   const s = { ...stanje, guessI: [...stanje.guessI], guessP: [...stanje.guessP] }
   const tajna = izazov.rijeci[s.trenutna]
   const rijesio = guess === tajna
 
-  if (jaIzazivac) {
-    s.guessI.push(guess)
-    if (rijesio) s.rijeseoI = true
-  } else {
-    s.guessP.push(guess)
-    if (rijesio) s.rijeseoP = true
+  if (jaIzazivac) s.guessI.push(guess)
+  else s.guessP.push(guess)
+
+  if (rijesio) {
+    // Prvi koji pogodi -> pobjeda, partija gotova.
+    s.gotovo = true
+    s.pobjednik = mojId
+    return s
   }
 
-  const iGotov = s.rijeseoI || s.guessI.length >= BROJ_REDOVA
-  const pGotov = s.rijeseoP || s.guessP.length >= BROJ_REDOVA
-
+  // Nitko nije pogodio ovim potezom. Jesu li oba potrošila svih 6 pokušaja?
+  const iGotov = s.guessI.length >= BROJ_REDOVA
+  const pGotov = s.guessP.length >= BROJ_REDOVA
   if (iGotov && pGotov) {
-    // Oboje gotovi s ovom riječi -> zbroji pokušaje i idi dalje.
-    s.ukupnoI += s.guessI.length
-    s.ukupnoP += s.guessP.length
+    // Oboje promašili ovu riječ -> sljedeća riječ (ili kraj = neriješeno).
     if (s.trenutna + 1 >= izazov.rijeci.length) {
       s.gotovo = true
+      s.pobjednik = null
     } else {
       s.trenutna += 1
       s.guessI = []
       s.guessP = []
-      s.rijeseoI = false
-      s.rijeseoP = false
-      // Prvi na potezu za novu riječ naizmjence (parni index -> izazivač).
       s.naPotezu = s.trenutna % 2 === 0 ? izazov.izazivac : izazov.protivnik
     }
   } else if (!iGotov && !pGotov) {
-    // Nitko nije gotov -> red ide protivniku.
     s.naPotezu = jaIzazivac ? izazov.protivnik : izazov.izazivac
   } else {
-    // Jedan je gotov -> red ide onome tko NIJE gotov (drugi se preskače).
+    // Jedan potrošio 6 -> red ide onome tko još ima pokušaja.
     s.naPotezu = iGotov ? izazov.protivnik : izazov.izazivac
   }
   return s
@@ -129,10 +124,7 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   const naMeni = stanje.naPotezu === korisnik.id && !stanje.gotovo
   const mojiGuesses = jaIzazivac ? stanje.guessI : stanje.guessP
   const protivnikGuesses = jaIzazivac ? stanje.guessP : stanje.guessI
-  const mojRijeseo = jaIzazivac ? stanje.rijeseoI : stanje.rijeseoP
-  const mojUkupno = jaIzazivac ? stanje.ukupnoI : stanje.ukupnoP
-  const protivnikUkupno = jaIzazivac ? stanje.ukupnoP : stanje.ukupnoI
-  const moguGuessati = naMeni && !mojRijeseo && mojiGuesses.length < BROJ_REDOVA
+  const moguGuessati = naMeni && mojiGuesses.length < BROJ_REDOVA
 
   async function posalji() {
     if (!moguGuessati) return
@@ -172,10 +164,11 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     return () => window.removeEventListener('keydown', naPritisak)
   })
 
-  // Boje tipkovnice iz mojih pokušaja za trenutnu riječ.
+  // Boje tipkovnice iz SVIH pokušaja na trenutnoj riječi (i mojih i protivnikovih),
+  // jer oboje pogađamo istu riječ -> protivnikovi pogoci ti pomažu i na tipkovnici.
   const statusSlova = {}
   const RANG = { krivo: 1, skoro: 2, tocno: 3 }
-  mojiGuesses.forEach((g) => {
+  ;[...stanje.guessI, ...stanje.guessP].forEach((g) => {
     const ocjene = ocijeniRijec(g, tajna)
     g.split('').forEach((slovo, i) => {
       const novi = ocjene[i]
@@ -224,16 +217,6 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
         </div>
         <h1>🔄</h1>
         <p className="poruka uspjeh">{t('ch_complete')}</p>
-        <div className="statistika">
-          <div className="stat">
-            <span className="stat-broj">{mojUkupno}</span>
-            <span className="stat-ime">{t('pt_you')}</span>
-          </div>
-          <div className="stat">
-            <span className="stat-broj">{protivnikUkupno}</span>
-            <span className="stat-ime">{t('pt_opponent')}</span>
-          </div>
-        </div>
         {r === 'win' && <p className="poruka uspjeh">{t('ch_you_win')}</p>}
         {r === 'lose' && <p className="poruka neuspjeh">{t('ch_you_lose')}</p>}
         {r === 'draw' && <p className="poruka">{t('ch_draw')}</p>}
@@ -245,7 +228,7 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   }
 
   // --- Igra ---
-  const statusReda = mojRijeseo ? t('pt_solved_waiting') : naMeni ? t('pt_your_turn') : t('pt_opp_turn')
+  const statusReda = naMeni ? t('pt_your_turn') : t('pt_opp_turn')
 
   return (
     <div className="app">
@@ -287,11 +270,11 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
       {/* Dvije ploče: ti + protivnik */}
       <div className="pt-ploce" onClick={() => moguGuessati && inputRef.current?.focus()}>
         <div className="pt-strana">
-          <span className="pt-oznaka">{t('pt_you')} · {mojUkupno + mojiGuesses.length}</span>
+          <span className="pt-oznaka">{t('pt_you')}</span>
           {ploca(mojiGuesses, true)}
         </div>
         <div className="pt-strana">
-          <span className="pt-oznaka">{t('pt_opponent')} · {protivnikUkupno + protivnikGuesses.length}</span>
+          <span className="pt-oznaka">{t('pt_opponent')}</span>
           {ploca(protivnikGuesses, false)}
         </div>
       </div>
