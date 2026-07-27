@@ -3,12 +3,14 @@ import { supabase } from './supabaseClient'
 import { VARIJANTE } from './varijante'
 import { useJezik } from './i18n'
 import { jeOdlucen, perspektiva } from './izazovLogika'
+import { izracunajXp, razinaZaXp } from './napredak'
 import Avatar from './Avatar'
 import Ljestvica from './Ljestvica'
 import Postavke from './Postavke'
 import Prijatelji from './Prijatelji'
 import Izazovi from './Izazovi'
 import Upute from './Upute'
+import NapredakModal from './NapredakModal'
 import './Pocetna.css'
 
 // Prvi ekran (početna): biraš VRSTU igre (koliko riječi pogađaš odjednom).
@@ -18,6 +20,7 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
   const [upute, setUpute] = useState(null)  // varijanta čije upute gledamo
   const [brojZahtjeva, setBrojZahtjeva] = useState(0) // zahtjevi za prijateljstvo
   const [brojIzazova, setBrojIzazova] = useState(0)   // izazovi koji traže moju akciju
+  const [podaci, setPodaci] = useState(null)          // statistika (za razinu/postignuća)
 
   // Prebroji stvari koje me čekaju (za značke).
   async function osvjeziZnacke() {
@@ -43,6 +46,14 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
         n++ // za odigrati
     }
     setBrojIzazova(n)
+
+    // Statistika za razinu i postignuća
+    const { data: stat } = await supabase
+      .from('statistike')
+      .select('podaci')
+      .eq('user_id', korisnik.id)
+      .maybeSingle()
+    setPodaci(stat?.podaci || {})
   }
 
   // Osvježi na početku i svaki put kad se zatvori neki prozor (npr. prihvatiš zahtjev).
@@ -56,6 +67,23 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
         <Avatar url={korisnik.user_metadata?.avatar_url} ime={ime} size={30} />
         <span className="korisnik-ime">{ime}</span>
       </div>
+
+      {/* Traka razine (klik -> napredak i postignuća) */}
+      {podaci &&
+        (() => {
+          const r = razinaZaXp(izracunajXp(podaci))
+          const pct = Math.round((r.uRazini / r.zaSljedecu) * 100)
+          return (
+            <button className="razina-traka" onClick={() => setModal('napredak')}>
+              <span className="razina-lvl">
+                {t('level_short')} {r.razina}
+              </span>
+              <span className="razina-bar">
+                <span style={{ width: `${pct}%` }} />
+              </span>
+            </button>
+          )
+        })()}
 
       <h1 className="pocetna-logo">WORDLE</h1>
       <p className="pocetna-podnaslov">{t('choose_variant')}</p>
@@ -101,6 +129,11 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
 
       {/* Upute za odabranu varijantu */}
       {upute && <Upute varijanta={upute} onZatvori={() => setUpute(null)} />}
+
+      {/* Napredak (razina + postignuća) */}
+      {modal === 'napredak' && (
+        <NapredakModal podaci={podaci} onZatvori={() => setModal(null)} />
+      )}
 
       {/* Skočni prozori */}
       {modal === 'izazovi' && (
