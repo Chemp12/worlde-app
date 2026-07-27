@@ -31,6 +31,14 @@ const PRIJEVODI = {
     nacin_monthly_opis: 'Same word all month',
     nacin_unlimited_ime: 'Unlimited',
     nacin_unlimited_opis: 'Play endlessly',
+    nacin_timer_ime: 'Timer',
+    nacin_timer_opis: 'Solve as many as you can before time runs out',
+    timer_sub: '⏱️ Timer',
+    timer_time: 'Time',
+    timer_score: 'Score',
+    timer_best: 'Best',
+    timer_over: "Time's up!",
+    play_again: 'Play again',
 
     // Hubovi
     choose_variant: 'Choose game type',
@@ -248,6 +256,14 @@ const PRIJEVODI = {
     nacin_monthly_opis: 'Ista riječ cijeli mjesec',
     nacin_unlimited_ime: 'Neograničeno',
     nacin_unlimited_opis: 'Igraj bez kraja',
+    nacin_timer_ime: 'Timer',
+    nacin_timer_opis: 'Riješi što više prije isteka vremena',
+    timer_sub: '⏱️ Timer',
+    timer_time: 'Vrijeme',
+    timer_score: 'Bodovi',
+    timer_best: 'Rekord',
+    timer_over: 'Isteklo vrijeme!',
+    play_again: 'Igraj ponovno',
 
     // Hubovi
     choose_variant: 'Odaberi vrstu igre',

@@ -233,6 +233,23 @@ h1 {
   letter-spacing: 0.5px;
 }
 
+/* Timer mod */
+.malo-vremena {
+  color: #ff6b5e; /* crveno kad je malo vremena */
+}
+.timer-kraj {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+.timer-rezultat {
+  font-size: 16px;
+  color: var(--text);
+  margin: 0;
+}
+
 /* Poruke igraču (obavijesti, pobjeda, poraz) */
 .poruka {
   margin: 8px 0;

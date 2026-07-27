@@ -4,4 +4,5 @@ export const NACINI = [
   { id: 'weekly', ikona: '🗓️', ime: 'Tjedni', opis: 'Ista riječ cijeli tjedan' },
   { id: 'monthly', ikona: '📆', ime: 'Mjesečni', opis: 'Ista riječ cijeli mjesec' },
   { id: 'unlimited', ikona: '♾️', ime: 'Neograničeno', opis: 'Igraj bez kraja' },
+  { id: 'timer', ikona: '⏱️', ime: 'Timer', opis: 'Utrka s vremenom' },
 ]

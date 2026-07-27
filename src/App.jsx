@@ -95,11 +95,18 @@ function odaberiRijeci(koliko, seed, pool) {
 // Klasik: dnevni 5, tjedni 6, mjesečni 8, neograničeni = koliko korisnik izabere.
 // Ostale varijante: uvijek 5 slova.
 function duljinaZa(varijanta, nacin, duljinaUnlimited) {
+  if (nacin === 'timer') return 5 // timer uvijek 5 slova
   if (varijanta.id !== 'klasik') return 5
   if (nacin === 'weekly') return 6
   if (nacin === 'monthly') return 8
   if (nacin === 'unlimited') return duljinaUnlimited
   return 5 // daily
+}
+
+// Timer mod: početno vrijeme i bonus po riješenom setu (teže varijante -> veći bonus).
+const TIMER_POCETNO = 60
+function timerBonus(brojRijeci) {
+  return brojRijeci * 5 + 10
 }
 
 // Riječi za periodički mod (dnevni/tjedni/mjesečni). Sjeme spaja broj razdoblja,
@@ -153,6 +160,7 @@ function podnaslovZa(nacin, t) {
   if (nacin === 'daily') return t('daily_sub', { n: danaOdPocetka(datumDanas()) + 1 })
   if (nacin === 'weekly') return t('weekly_sub', { n: brojTjedna() + 1 })
   if (nacin === 'monthly') return t('monthly_sub')
+  if (nacin === 'timer') return t('timer_sub')
   return t('unlimited_sub')
 }
 
@@ -189,6 +197,10 @@ function kljucIgre(varijanta, nacin, jezik, duljina, userId) {
 
 // Učitaj (tajne riječi + spremljeni napredak) za danu varijantu, način, jezik i duljinu.
 function ucitajStanje(varijanta, nacin, userId, jezik, duljina) {
+  // Timer mod se ne pamti — uvijek svježe nasumične riječi.
+  if (nacin === 'timer') {
+    return { tajne: nasumicneRijeci(varijanta.brojRijeci, jezik, duljina), pokusaji: [] }
+  }
   const spremljeno = localStorage.getItem(kljucIgre(varijanta, nacin, jezik, duljina, userId))
   if (spremljeno) {
     const p = JSON.parse(spremljeno)
@@ -270,6 +282,13 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   const [animira, setAnimira] = useState(false) // traje li trenutno okretanje reda?
   const [tresi, setTresi] = useState(false)
   const [kopirano, setKopirano] = useState(false) // "Kopirano!" nakon dijeljenja
+  // Timer mod
+  const [preostalo, setPreostalo] = useState(TIMER_POCETNO)
+  const [bodovi, setBodovi] = useState(0)
+  const [krajTimer, setKrajTimer] = useState(false)
+  const [rekord, setRekord] = useState(() =>
+    Number(localStorage.getItem(`wordle-timer-best-${varijanta.id}-${korisnik.id}`) || 0)
+  )
   const [prikaziKraj, setPrikaziKraj] = useState(() =>
     jeGotovaIgra(pocetno.pokusaji, pocetno.tajne, brojRedova)
   )
@@ -345,6 +364,33 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     return () => clearInterval(id)
   }, [nacin])
 
+  // Timer mod: odbrojavanje. Kad istekne vrijeme -> kraj partije.
+  useEffect(() => {
+    if (nacin !== 'timer' || krajTimer) return
+    const id = setInterval(() => {
+      setPreostalo((p) => {
+        if (p <= 1) {
+          setKrajTimer(true)
+          return 0
+        }
+        return p - 1
+      })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [nacin, krajTimer])
+
+  // Timer kraj: spremi rekord (najviše bodova).
+  useEffect(() => {
+    if (krajTimer && nacin === 'timer') {
+      const kljuc = `wordle-timer-best-${varijanta.id}-${korisnik.id}`
+      if (bodovi > Number(localStorage.getItem(kljuc) || 0)) {
+        localStorage.setItem(kljuc, String(bodovi))
+        setRekord(bodovi)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [krajTimer])
+
   // Prebaci na drugi način: učitaj njegove riječi i napredak (duljina ovisi o modu).
   function promijeniNacin(noviNacin) {
     const novaDuljina = duljinaZa(varijanta, noviNacin, duljinaUnlimited)
@@ -358,6 +404,12 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     setAnimira(false)
     setPrikaziKraj(jeGotovaIgra(stanje.pokusaji, stanje.tajne, brojRedova))
     localStorage.setItem(KLJUC_NACINA, noviNacin)
+    // Timer: kreni ispočetka (vrijeme, bodovi).
+    if (noviNacin === 'timer') {
+      setPreostalo(TIMER_POCETNO)
+      setBodovi(0)
+      setKrajTimer(false)
+    }
   }
 
   // Promijeni jezik riječi -> učitaj igru trenutnog moda na novom jeziku.
@@ -446,6 +498,24 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     setPrikaziKraj(false)
   }
 
+  // Timer: novi set riječi (bez diranja vremena/bodova).
+  function noviTimerSet() {
+    setTajne(nasumicneRijeci(brojRijeci, jezik, 5))
+    setPokusaji([])
+    setTrenutni('')
+    setPoruka('')
+    setRedZaAnimaciju(null)
+    setAnimira(false)
+  }
+
+  // Timer: kreni ispočetka (nova partija).
+  function pokreniTimer() {
+    setPreostalo(TIMER_POCETNO)
+    setBodovi(0)
+    setKrajTimer(false)
+    noviTimerSet()
+  }
+
   // Spremi cijelu statistiku u Supabase (upsert = unesi ili ažuriraj red korisnika).
   async function spremiUOblak(sve) {
     const { error } = await supabase
@@ -527,7 +597,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   }
 
   function obradiTipku(tipka) {
-    if (gotovo || animira) return // dok se red okreće, ignoriraj sav unos
+    if (gotovo || animira || krajTimer) return // dok se red okreće / timer istekao, ignoriraj
 
     if (tipka === 'ENTER') {
       if (trenutni.length !== brojStupaca) {
@@ -563,8 +633,17 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
       const poraz = !pobjeda && noviPokusaji.length === brojRedova
       if (pobjeda || poraz) {
         setTimeout(() => {
-          azurirajStatistiku(pobjeda, noviPokusaji.length)
-          setPrikaziKraj(true)
+          if (nacin === 'timer') {
+            // Timer: pobjeda -> bod + bonus vrijeme; svejedno novi set (dok ima vremena).
+            if (pobjeda) {
+              setBodovi((b) => b + 1)
+              setPreostalo((p) => p + timerBonus(brojRijeci))
+            }
+            noviTimerSet()
+          } else {
+            azurirajStatistiku(pobjeda, noviPokusaji.length)
+            setPrikaziKraj(true)
+          }
         }, trajanje)
       }
     } else if (tipka === 'BACK') {
@@ -582,7 +661,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   }
 
   function naInput(event) {
-    if (gotovo || animira) return
+    if (gotovo || animira || krajTimer) return
     const cist = event.target.value
       .toUpperCase()
       .replace(/[^A-Z]/g, '') // makni sve što nije slovo
@@ -729,24 +808,54 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
         </div>
       )}
 
-      <div className="statistika">
-        <div className="stat">
-          <span className="stat-broj">{statistika.odigrano}</span>
-          <span className="stat-ime">{t('stat_played')}</span>
+      {nacin === 'timer' ? (
+        <div className="statistika">
+          <div className="stat">
+            <span className={`stat-broj ${preostalo <= 10 ? 'malo-vremena' : ''}`}>{preostalo}s</span>
+            <span className="stat-ime">{t('timer_time')}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-broj">{bodovi}</span>
+            <span className="stat-ime">{t('timer_score')}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-broj">{rekord}</span>
+            <span className="stat-ime">{t('timer_best')}</span>
+          </div>
         </div>
-        <div className="stat">
-          <span className="stat-broj">{postotakPobjeda}%</span>
-          <span className="stat-ime">{t('stat_wins')}</span>
+      ) : (
+        <div className="statistika">
+          <div className="stat">
+            <span className="stat-broj">{statistika.odigrano}</span>
+            <span className="stat-ime">{t('stat_played')}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-broj">{postotakPobjeda}%</span>
+            <span className="stat-ime">{t('stat_wins')}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-broj">{statistika.trenutniNiz}</span>
+            <span className="stat-ime">{t('stat_streak')}</span>
+          </div>
+          <div className="stat">
+            <span className="stat-broj">{statistika.najboljiNiz}</span>
+            <span className="stat-ime">{t('stat_record')}</span>
+          </div>
         </div>
-        <div className="stat">
-          <span className="stat-broj">{statistika.trenutniNiz}</span>
-          <span className="stat-ime">{t('stat_streak')}</span>
+      )}
+
+      {/* Timer istekao -> rezultat + igraj ponovno */}
+      {nacin === 'timer' && krajTimer && (
+        <div className="timer-kraj">
+          <p className="poruka neuspjeh">{t('timer_over')}</p>
+          <p className="timer-rezultat">
+            {t('timer_score')}: <b>{bodovi}</b> · {t('timer_best')}: <b>{rekord}</b>
+          </p>
+          <button className="gumb" onClick={pokreniTimer}>
+            {t('play_again')}
+          </button>
         </div>
-        <div className="stat">
-          <span className="stat-broj">{statistika.najboljiNiz}</span>
-          <span className="stat-ime">{t('stat_record')}</span>
-        </div>
-      </div>
+      )}
 
       {pobijedio && prikaziKraj && <p className="poruka uspjeh">{t('win_msg')}</p>}
       {izgubio && prikaziKraj && (
