@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { TEME, ucitajTemuId, postaviTemu, ucitajBoju, postaviBoju } from './tema'
 import { useJezik, JEZICI } from './i18n'
+import { zvukUkljucen, postaviZvuk } from './zvuk'
 import Statistika from './Statistika'
 
 // Ponuđene boje naglaska
@@ -11,6 +12,7 @@ import './Postavke.css'
 
 function Postavke({ korisnik, ime, onOdjava, onZatvori }) {
   const { t, jezik, postaviJezik } = useJezik()
+  const [zvuk, setZvuk] = useState(zvukUkljucen())
   const [noviUsername, setNoviUsername] = useState('')
   const [novaLozinka, setNovaLozinka] = useState('')
   const [poruka, setPoruka] = useState('')
@@ -229,6 +231,29 @@ function Postavke({ korisnik, ime, onOdjava, onZatvori }) {
               onChange={(e) => odaberiBoju(e.target.value)}
             />
           </label>
+        </div>
+
+        {/* Zvuk i vibracija */}
+        <h3 className="postavke-naslov">{t('set_sound')}</h3>
+        <div className="postavke-jezici">
+          <button
+            className={`jezik-gumb ${zvuk ? 'aktivan' : ''}`}
+            onClick={() => {
+              postaviZvuk(true)
+              setZvuk(true)
+            }}
+          >
+            🔊 {t('on')}
+          </button>
+          <button
+            className={`jezik-gumb ${!zvuk ? 'aktivan' : ''}`}
+            onClick={() => {
+              postaviZvuk(false)
+              setZvuk(false)
+            }}
+          >
+            🔇 {t('off')}
+          </button>
         </div>
 
         {/* Promjena korisničkog imena */}

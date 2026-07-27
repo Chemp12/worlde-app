@@ -4,6 +4,7 @@ import { NACINI } from './moduli'
 import { VARIJANTE, varijantaPoId } from './varijante'
 import { useJezik } from './i18n'
 import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, ZADANI_JEZIK, JEZICI } from './rijeci'
+import { zvukTipka, zvukGreska, zvukPobjeda, zvukPoraz } from './zvuk'
 
 const KLJUC_JEZIK_RIJECI = 'wordle-jezik-rijeci'
 import Avatar from './Avatar'
@@ -603,11 +604,13 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
       if (trenutni.length !== brojStupaca) {
         setPoruka(t('too_few'))
         zatresi()
+        zvukGreska()
         return
       }
       if (!jeDozvoljena(jezik, trenutni)) {
         setPoruka(t('not_in_list'))
         zatresi()
+        zvukGreska()
         return
       }
 
@@ -638,11 +641,14 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
             if (pobjeda) {
               setBodovi((b) => b + 1)
               setPreostalo((p) => p + timerBonus(brojRijeci))
+              zvukPobjeda()
             }
             noviTimerSet()
           } else {
             azurirajStatistiku(pobjeda, noviPokusaji.length)
             setPrikaziKraj(true)
+            if (pobjeda) zvukPobjeda()
+            else zvukPoraz()
           }
         }, trajanje)
       }
@@ -651,6 +657,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     } else if (/^[A-Z]$/.test(tipka)) {
       if (trenutni.length < brojStupaca) {
         setTrenutni(trenutni + tipka)
+        zvukTipka()
       }
     }
   }
