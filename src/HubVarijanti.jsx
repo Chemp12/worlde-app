@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 import { VARIJANTE } from './varijante'
 import { useJezik } from './i18n'
+import { jeOdlucen, perspektiva } from './izazovLogika'
 import Avatar from './Avatar'
 import Ljestvica from './Ljestvica'
 import Postavke from './Postavke'
@@ -14,6 +16,39 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
   const { t } = useJezik()
   const [modal, setModal] = useState(null) // 'prijatelji' | 'ljestvica' | 'postavke' | null
   const [upute, setUpute] = useState(null)  // varijanta čije upute gledamo
+  const [brojZahtjeva, setBrojZahtjeva] = useState(0) // zahtjevi za prijateljstvo
+  const [brojIzazova, setBrojIzazova] = useState(0)   // izazovi koji traže moju akciju
+
+  // Prebroji stvari koje me čekaju (za značke).
+  async function osvjeziZnacke() {
+    const { count } = await supabase
+      .from('prijateljstva')
+      .select('*', { count: 'exact', head: true })
+      .eq('primatelj', korisnik.id)
+      .eq('status', 'na_cekanju')
+    setBrojZahtjeva(count || 0)
+
+    const { data } = await supabase
+      .from('izazovi')
+      .select('*')
+      .or(`izazivac.eq.${korisnik.id},protivnik.eq.${korisnik.id}`)
+    let n = 0
+    for (const iz of data || []) {
+      if (iz.status === 'na_cekanju' && iz.protivnik === korisnik.id) n++ // čeka moje prihvaćanje
+      else if (
+        iz.status === 'prihvacen' &&
+        !jeOdlucen(iz, korisnik.id) &&
+        !perspektiva(iz, korisnik.id).mojGotov
+      )
+        n++ // za odigrati
+    }
+    setBrojIzazova(n)
+  }
+
+  // Osvježi na početku i svaki put kad se zatvori neki prozor (npr. prihvatiš zahtjev).
+  useEffect(() => {
+    if (modal === null) osvjeziZnacke()
+  }, [modal])
 
   return (
     <div className="pocetna">
@@ -50,9 +85,11 @@ function HubVarijanti({ korisnik, ime, onOdaberiVarijantu, onIgrajIzazov, onOdja
       <div className="pocetna-akcije">
         <button className="akcija-gumb" onClick={() => setModal('izazovi')}>
           {t('challenges')}
+          {brojIzazova > 0 && <span className="akcija-znacka">{brojIzazova}</span>}
         </button>
         <button className="akcija-gumb" onClick={() => setModal('prijatelji')}>
           {t('friends')}
+          {brojZahtjeva > 0 && <span className="akcija-znacka">{brojZahtjeva}</span>}
         </button>
         <button className="akcija-gumb" onClick={() => setModal('ljestvica')}>
           {t('leaderboard')}
