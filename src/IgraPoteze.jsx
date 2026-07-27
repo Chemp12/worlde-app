@@ -8,6 +8,7 @@ import './IgraPoteze.css'
 
 const BROJ_REDOVA = 6
 const BROJ_STUPACA = 5
+const TIMEOUT_MS = 90000 // 90 s neaktivnosti protivnika -> možeš preuzeti pobjedu
 
 const REDOVI_TIPKOVNICE = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -24,6 +25,7 @@ function pocetnoStanje(izazov) {
     guessP: [],
     gotovo: false,
     pobjednik: null, // user_id prvog koji pogodi (ili null = neriješeno)
+    zadnjaAkcija: new Date().toISOString(), // za timeout ako protivnik ode
   }
 }
 
@@ -37,6 +39,7 @@ function primijeniPotez(stanje, izazov, mojId, guess) {
 
   if (jaIzazivac) s.guessI.push(guess)
   else s.guessP.push(guess)
+  s.zadnjaAkcija = new Date().toISOString()
 
   if (rijesio) {
     // Prvi koji pogodi -> pobjeda, partija gotova.
@@ -76,9 +79,16 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   const [trenutni, setTrenutni] = useState('')
   const [poruka, setPoruka] = useState('')
   const [tresi, setTresi] = useState(false)
+  const [sada, setSada] = useState(Date.now()) // za odbrojavanje neaktivnosti
   const inputRef = useRef(null)
   const inicijalizirano = useRef(false)
   const zadnjiPotez = useRef(0) // kad sam zadnji put odigrao (da polling ne "vrati" moj potez)
+
+  // Štoperica (svake sekunde) da se gumb "preuzmi pobjedu" pojavi na vrijeme.
+  useEffect(() => {
+    const id = setInterval(() => setSada(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
 
   // Prvi koji uđe stvara stanje partije; ostali ga učitaju.
   useEffect(() => {
@@ -125,6 +135,12 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   const mojiGuesses = jaIzazivac ? stanje.guessI : stanje.guessP
   const protivnikGuesses = jaIzazivac ? stanje.guessP : stanje.guessI
   const moguGuessati = naMeni && mojiGuesses.length < BROJ_REDOVA
+  // Protivnik je na redu, ali dugo ne igra -> smiješ preuzeti pobjedu.
+  const neaktivan =
+    !naMeni &&
+    !stanje.gotovo &&
+    stanje.zadnjaAkcija &&
+    sada - new Date(stanje.zadnjaAkcija).getTime() > TIMEOUT_MS
 
   async function posalji() {
     if (!moguGuessati) return
@@ -143,6 +159,14 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     setStanje(novo)
     setTrenutni('')
     setPoruka('')
+    await supabase.from('izazovi').update({ poteza: novo }).eq('id', izazov.id)
+  }
+
+  // Protivnik ne igra dugo -> preuzmi pobjedu.
+  async function preuzmiPobjedu() {
+    const novo = { ...stanje, gotovo: true, pobjednik: korisnik.id }
+    zadnjiPotez.current = Date.now()
+    setStanje(novo)
     await supabase.from('izazovi').update({ poteza: novo }).eq('id', izazov.id)
   }
 
@@ -240,6 +264,16 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
 
       <h1>🔄 {t('ch_word_of', { n: stanje.trenutna + 1, total: izazov.rijeci.length })}</h1>
       <p className={`pt-status ${naMeni ? 'moj' : ''}`}>{statusReda}</p>
+
+      {/* Protivnik dugo ne igra -> preuzmi pobjedu */}
+      {neaktivan && (
+        <div className="pt-neaktivan">
+          <span>{t('pt_idle')}</span>
+          <button className="gumb" onClick={preuzmiPobjedu}>
+            {t('pt_claim')}
+          </button>
+        </div>
+      )}
 
       {poruka && <p className="poruka">{poruka}</p>}
 

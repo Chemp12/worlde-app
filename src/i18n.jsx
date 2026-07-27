@@ -201,6 +201,8 @@ const PRIJEVODI = {
     pt_solved_waiting: '✅ Solved! Waiting...',
     pt_you: 'You',
     pt_opponent: 'Opponent',
+    pt_idle: "Opponent hasn't played in a while.",
+    pt_claim: '🏆 Claim win',
   },
 
   hr: {
@@ -401,6 +403,8 @@ const PRIJEVODI = {
     pt_solved_waiting: '✅ Riješeno! Čekaš...',
     pt_you: 'Ti',
     pt_opponent: 'Protivnik',
+    pt_idle: 'Protivnik već neko vrijeme ne igra.',
+    pt_claim: '🏆 Preuzmi pobjedu',
   },
 }
 

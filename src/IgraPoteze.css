@@ -9,6 +9,20 @@
   color: var(--accent);
 }
 
+/* Poruka + gumb kad protivnik dugo ne igra */
+.pt-neaktivan {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.pt-neaktivan .gumb {
+  margin-top: 0;
+}
+
 /* Dvije ploče jedna do druge (ti + protivnik) */
 .pt-ploce {
   display: flex;
