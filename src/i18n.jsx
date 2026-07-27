@@ -140,6 +140,7 @@ const PRIJEVODI = {
     login_err_pass_min: 'Password must be at least 6 characters',
     login_err_taken: 'That username is taken',
     login_err_credentials: 'Wrong username or password',
+    register_warning: '⚠️ Remember your password well — there is no email recovery.',
 
     // Teme
     tema_tamna_ime: 'Classic dark',
@@ -342,6 +343,7 @@ const PRIJEVODI = {
     login_err_pass_min: 'Lozinka mora imati barem 6 znakova',
     login_err_taken: 'To korisničko ime je zauzeto',
     login_err_credentials: 'Pogrešno korisničko ime ili lozinka',
+    register_warning: '⚠️ Dobro zapamti lozinku — nema oporavka putem emaila.',
 
     // Teme
     tema_tamna_ime: 'Klasična tamna',

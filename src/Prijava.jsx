@@ -118,6 +118,7 @@ function Prijava() {
           autoComplete={jeRegistracija ? 'new-password' : 'current-password'}
         />
 
+        {jeRegistracija && <p className="prijava-napomena">{t('register_warning')}</p>}
         {greska && <p className="prijava-greska">{greska}</p>}
 
         <button className="prijava-gumb" type="submit" disabled={ucitava}>

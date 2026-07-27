@@ -53,6 +53,18 @@
   text-align: center;
 }
 
+/* Napomena pri registraciji (nema oporavka lozinke) */
+.prijava-napomena {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--muted);
+  background: var(--surface2);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 12px;
+  text-align: center;
+}
+
 .prijava-gumb {
   padding: 14px;
   font-size: 16px;
