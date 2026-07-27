@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import { NACINI } from './moduli'
 import { VARIJANTE, varijantaPoId } from './varijante'
 import { useJezik } from './i18n'
-import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, ZADANI_JEZIK, JEZICI } from './rijeci'
+import { poolRijeci, jeDozvoljena, slucajneRijeci, ocijeniRijec, osiguraj, ZADANI_JEZIK, JEZICI } from './rijeci'
 import { zvukTipka, zvukGreska, zvukPobjeda, zvukPoraz } from './zvuk'
 
 const KLJUC_JEZIK_RIJECI = 'wordle-jezik-rijeci'
@@ -413,8 +413,9 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     }
   }
 
-  // Promijeni jezik riječi -> učitaj igru trenutnog moda na novom jeziku.
-  function promijeniJezik(noviJezik) {
+  // Promijeni jezik riječi -> učitaj popis (ako treba) pa igru trenutnog moda na novom jeziku.
+  async function promijeniJezik(noviJezik) {
+    await osiguraj(noviJezik)
     setJezik(noviJezik)
     localStorage.setItem(KLJUC_JEZIK_RIJECI, noviJezik)
     const stanje = ucitajStanje(varijanta, nacin, korisnik.id, noviJezik, brojStupaca)

@@ -1,32 +1,14 @@
-// Zajednička logika oko riječi — dijele je glavna igra (App.jsx) i izazovi.
-// Svaki jezik ima svoj popis čestih riječi (4–8 slova), služi za rješenja i za dozvoljene pokušaje.
-import en from './rijeci-en.txt?raw'
-import es from './rijeci-es.txt?raw'
-import fr from './rijeci-fr.txt?raw'
-import de from './rijeci-de.txt?raw'
-import it from './rijeci-it.txt?raw'
-import hr from './rijeci-hr.txt?raw'
+// Zajednička logika oko riječi. Popisi se učitavaju LIJENO (po potrebi) da glavni
+// paket bude manji i prvo učitavanje brže. Engleski (fallback) + trenutni jezik
+// učitaju se na startu; ostali kad prvi put zatrebaju.
+
+// Vite: mapa "./rijeci-<jezik>.txt" -> funkcija koja lijeno učita tekst.
+const UCITAVACI = import.meta.glob('./rijeci-*.txt', { query: '?raw', import: 'default' })
 
 export const BROJ_STUPACA = 5 // zadana duljina (izazovi zasad koriste 5)
-
-function parsiraj(txt) {
-  return txt.split(/\r?\n/).map((r) => r.trim().toUpperCase()).filter(Boolean)
-}
-
-// Popisi po jeziku.
-const POPISI = {
-  en: parsiraj(en),
-  es: parsiraj(es),
-  fr: parsiraj(fr),
-  de: parsiraj(de),
-  it: parsiraj(it),
-  hr: parsiraj(hr),
-}
-
 export const ZADANI_JEZIK = 'en'
 
-// Ponuđeni jezici riječi (za izbornike). Kod se prikazuje kao tekst
-// (zastavice-emoji se na Windowsu ne prikazuju kao zastave).
+// Ponuđeni jezici riječi (za izbornike). Kod se prikazuje kao tekst (Windows ne crta zastavice).
 export const JEZICI = [
   { id: 'en', ime: 'English', kod: 'EN' },
   { id: 'es', ime: 'Español', kod: 'ES' },
@@ -36,12 +18,33 @@ export const JEZICI = [
   { id: 'hr', ime: 'Hrvatski', kod: 'HR' },
 ]
 
-// Popis riječi zadane duljine za zadani jezik (računa se jednom pa se pamti).
+function parsiraj(txt) {
+  return txt.split(/\r?\n/).map((r) => r.trim().toUpperCase()).filter(Boolean)
+}
+
+// Učitani popisi po jeziku (popunjava ih osiguraj()).
+const POPISI = {}
+
+// Osiguraj da je popis riječi za jezik učitan (asinkrono; pamti se).
+export async function osiguraj(jezik) {
+  if (POPISI[jezik]) return
+  const ucitaj = UCITAVACI[`./rijeci-${jezik}.txt`]
+  if (!ucitaj) return
+  POPISI[jezik] = parsiraj(await ucitaj())
+}
+
+// Koji je jezik riječi spremljen (za startno učitavanje).
+export function ucitajJezikRijeci() {
+  return localStorage.getItem('wordle-jezik-rijeci') || ZADANI_JEZIK
+}
+
+// Popis riječi zadane duljine za zadani jezik (fallback na engleski ako još nije učitan).
 const cachePool = {}
 export function poolRijeci(jezik, duljina) {
-  const kljuc = jezik + ':' + duljina
+  const izvor = POPISI[jezik] ? jezik : ZADANI_JEZIK
+  const kljuc = izvor + ':' + duljina
   if (!cachePool[kljuc]) {
-    const popis = POPISI[jezik] || POPISI[ZADANI_JEZIK]
+    const popis = POPISI[izvor] || []
     cachePool[kljuc] = popis.filter((w) => w.length === duljina)
   }
   return cachePool[kljuc]
@@ -50,8 +53,9 @@ export function poolRijeci(jezik, duljina) {
 // Brza provjera je li utipkana riječ dozvoljena (za taj jezik i tu duljinu).
 const cacheSet = {}
 export function jeDozvoljena(jezik, rijec) {
-  const kljuc = jezik + ':' + rijec.length
-  if (!cacheSet[kljuc]) cacheSet[kljuc] = new Set(poolRijeci(jezik, rijec.length))
+  const izvor = POPISI[jezik] ? jezik : ZADANI_JEZIK
+  const kljuc = izvor + ':' + rijec.length
+  if (!cacheSet[kljuc]) cacheSet[kljuc] = new Set(poolRijeci(izvor, rijec.length))
   return cacheSet[kljuc].has(rijec)
 }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
-import { slucajneRijeci, JEZICI } from './rijeci'
+import { slucajneRijeci, osiguraj, JEZICI } from './rijeci'
 import { perspektiva, jeOdlucen, rezultat } from './izazovLogika'
 import Avatar from './Avatar'
 import './modal.css'
@@ -66,6 +66,7 @@ function Izazovi({ korisnik, onIgraj, onZatvori }) {
   async function posaljiIzazov() {
     if (!odabrani) return
     setPoruka('')
+    await osiguraj(jezikRijeci) // učitaj popis tog jezika ako već nije
     const rijeci = slucajneRijeci(brojRijeci, jezikRijeci, 5)
     const { error } = await supabase.from('izazovi').insert({
       izazivac: korisnik.id,

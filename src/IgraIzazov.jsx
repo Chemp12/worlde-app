@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
-import { BROJ_STUPACA, jeDozvoljena, ocijeniRijec } from './rijeci'
+import { BROJ_STUPACA, jeDozvoljena, ocijeniRijec, osiguraj } from './rijeci'
 import { graceRokMs, rezultat as izracunajRezultat } from './izazovLogika'
 import './App.css'
 import './Izazovi.css'
@@ -63,6 +63,11 @@ function IgraIzazov({ korisnik, izazov, onNatrag }) {
     const rok = graceRokMs(stanje)
     if (rok) graceOstalo = Math.max(0, Math.ceil((rok - Date.now()) / 1000))
   }
+
+  // Učitaj popis riječi jezika izazova (za validaciju pokušaja).
+  useEffect(() => {
+    osiguraj(izazov.jezik || 'en')
+  }, [])
 
   // Štoperica (broji dok je izazov otvoren i nije gotov).
   useEffect(() => {

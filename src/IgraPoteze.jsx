@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabaseClient'
 import { useJezik } from './i18n'
-import { jeDozvoljena, ocijeniRijec } from './rijeci'
+import { jeDozvoljena, ocijeniRijec, osiguraj } from './rijeci'
 import { rezultat as izracunajRezultat } from './izazovLogika'
 import './App.css'
 import './IgraPoteze.css'
@@ -85,6 +85,11 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   const zadnjiPotez = useRef(0) // da polling ne "vrati" moj svježi potez
   const prevI = useRef(izazov.poteza?.guessI.length || 0)
   const prevP = useRef(izazov.poteza?.guessP.length || 0)
+
+  // Učitaj popis riječi jezika izazova (za validaciju pokušaja).
+  useEffect(() => {
+    osiguraj(izazov.jezik || 'en')
+  }, [])
 
   // Prvi koji uđe stvara stanje partije; ostali ga učitaju.
   useEffect(() => {
