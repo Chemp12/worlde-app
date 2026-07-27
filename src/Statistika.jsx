@@ -98,6 +98,23 @@ function Statistika({ korisnik, onZatvori }) {
     return { odigrano, pobjede, rekord, posto }
   }
 
+  // Zbroj po JEDNOM modu (kroz sve varijante) — za razradu.
+  function zbrojNacina(nacinId) {
+    let odigrano = 0
+    let pobjede = 0
+    let rekord = 0
+    for (const v of VARIJANTE) {
+      const s = statZa(v.id, nacinId)
+      odigrano += s.odigrano
+      pobjede += s.pobjede
+      rekord = Math.max(rekord, s.najboljiNiz)
+    }
+    const posto = odigrano > 0 ? Math.round((pobjede / odigrano) * 100) : 0
+    return { odigrano, pobjede, rekord, posto }
+  }
+  // Timer nema klasičnu statistiku (arkadni bodovi), pa ga preskačemo u razradi po modu.
+  const NACINI_STAT = NACINI.filter((m) => m.id !== 'timer')
+
   return (
     <div className="modal-pozadina" onClick={onZatvori}>
       <div className="modal-kartica stat-kartica" onClick={(e) => e.stopPropagation()}>
@@ -148,7 +165,7 @@ function Statistika({ korisnik, onZatvori }) {
                   <span className="rasp-broj">{i + 1}</span>
                   <div className="rasp-track">
                     <div
-                      className="rasp-traka"
+                      className={`rasp-traka ${broj === maxRaspodjela && broj > 0 ? 'najveci' : ''}`}
                       style={{ width: `${(broj / maxRaspodjela) * 100}%` }}
                     >
                       <span className="rasp-count">{broj}</span>
@@ -166,6 +183,37 @@ function Statistika({ korisnik, onZatvori }) {
                 <div className="stat-mod" key={v.id}>
                   <div className="stat-mod-naslov">
                     {v.ikona} {t('var_' + v.id + '_ime')}
+                  </div>
+                  <div className="stat-mod-brojevi">
+                    <div>
+                      <b>{z.odigrano}</b>
+                      <span>{t('stats_played')}</span>
+                    </div>
+                    <div>
+                      <b>{z.posto}%</b>
+                      <span>{t('stats_winpct')}</span>
+                    </div>
+                    <div>
+                      <b>{z.pobjede}</b>
+                      <span>{t('stats_wins')}</span>
+                    </div>
+                    <div>
+                      <b>{z.rekord}</b>
+                      <span>{t('stat_record')}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Razrada po MODOVIMA */}
+            <h3 className="stat-naslov">{t('stats_by_mode')}</h3>
+            {NACINI_STAT.map((m) => {
+              const z = zbrojNacina(m.id)
+              return (
+                <div className="stat-mod" key={m.id}>
+                  <div className="stat-mod-naslov">
+                    {m.ikona} {t('nacin_' + m.id + '_ime')}
                   </div>
                   <div className="stat-mod-brojevi">
                     <div>

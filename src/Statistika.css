@@ -74,13 +74,17 @@
 .rasp-traka {
   height: 100%;
   min-width: 22px; /* da se broj vidi i kad je nula */
-  background: var(--accent); /* Wordle zelena */
+  background: color-mix(in srgb, var(--accent) 42%, var(--surface3)); /* prigušeno */
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   padding-right: 7px;
   transition: width 0.3s ease;
+}
+/* Najčešći rezultat istaknut punom bojom */
+.rasp-traka.najveci {
+  background: var(--accent);
 }
 .rasp-count {
   font-size: 12px;

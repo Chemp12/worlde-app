@@ -111,6 +111,7 @@ const PRIJEVODI = {
     stats_avg: 'Average',
     stats_distribution: 'Guess distribution',
     stats_by_variant: 'By variant',
+    stats_by_mode: 'By mode',
 
     // Postavke
     set_title: '⚙️ Settings',
@@ -339,6 +340,7 @@ const PRIJEVODI = {
     stats_avg: 'Prosjek',
     stats_distribution: 'Raspodjela pogodaka',
     stats_by_variant: 'Po varijantama',
+    stats_by_mode: 'Po modovima',
 
     // Postavke
     set_title: '⚙️ Postavke',
