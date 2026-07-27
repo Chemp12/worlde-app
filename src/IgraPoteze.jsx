@@ -8,7 +8,8 @@ import './IgraPoteze.css'
 
 const BROJ_REDOVA = 6
 const BROJ_STUPACA = 5
-const TIMEOUT_MS = 90000 // 90 s neaktivnosti protivnika -> možeš preuzeti pobjedu
+const TIMEOUT_MS = 90000     // 90 s neaktivnosti protivnika -> možeš preuzeti pobjedu
+const TRAJANJE_OTKRIVANJA = 1700 // ms: okretanje reda
 
 const REDOVI_TIPKOVNICE = [
   ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -25,12 +26,11 @@ function pocetnoStanje(izazov) {
     guessP: [],
     gotovo: false,
     pobjednik: null, // user_id prvog koji pogodi (ili null = neriješeno)
-    zadnjaAkcija: new Date().toISOString(), // za timeout ako protivnik ode
+    zadnjaAkcija: new Date().toISOString(),
   }
 }
 
-// Primijeni jedan potez (čisti izračun novog stanja). Igra ga onaj tko je na potezu.
-// Pravilo: tko PRVI pogodi riječ -> odmah pobjeđuje.
+// Primijeni jedan potez (čisti izračun). Pravilo: tko PRVI pogodi riječ -> pobjeđuje.
 function primijeniPotez(stanje, izazov, mojId, guess) {
   const jaIzazivac = izazov.izazivac === mojId
   const s = { ...stanje, guessI: [...stanje.guessI], guessP: [...stanje.guessP] }
@@ -42,17 +42,14 @@ function primijeniPotez(stanje, izazov, mojId, guess) {
   s.zadnjaAkcija = new Date().toISOString()
 
   if (rijesio) {
-    // Prvi koji pogodi -> pobjeda, partija gotova.
     s.gotovo = true
     s.pobjednik = mojId
     return s
   }
 
-  // Nitko nije pogodio ovim potezom. Jesu li oba potrošila svih 6 pokušaja?
   const iGotov = s.guessI.length >= BROJ_REDOVA
   const pGotov = s.guessP.length >= BROJ_REDOVA
   if (iGotov && pGotov) {
-    // Oboje promašili ovu riječ -> sljedeća riječ (ili kraj = neriješeno).
     if (s.trenutna + 1 >= izazov.rijeci.length) {
       s.gotovo = true
       s.pobjednik = null
@@ -65,7 +62,6 @@ function primijeniPotez(stanje, izazov, mojId, guess) {
   } else if (!iGotov && !pGotov) {
     s.naPotezu = jaIzazivac ? izazov.protivnik : izazov.izazivac
   } else {
-    // Jedan potrošio 6 -> red ide onome tko još ima pokušaja.
     s.naPotezu = iGotov ? izazov.protivnik : izazov.izazivac
   }
   return s
@@ -79,22 +75,21 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   const [trenutni, setTrenutni] = useState('')
   const [poruka, setPoruka] = useState('')
   const [tresi, setTresi] = useState(false)
-  const [sada, setSada] = useState(Date.now()) // za odbrojavanje neaktivnosti
+  const [sada, setSada] = useState(Date.now())
+  const [anim, setAnim] = useState(null) // { ploca: 'I'|'P', red } — koji red se trenutno okreće
+  const [otkriveno, setOtkriveno] = useState(0)
+  const [krajPrikazan, setKrajPrikazan] = useState(false)
+
   const inputRef = useRef(null)
   const inicijalizirano = useRef(false)
-  const zadnjiPotez = useRef(0) // kad sam zadnji put odigrao (da polling ne "vrati" moj potez)
-
-  // Štoperica (svake sekunde) da se gumb "preuzmi pobjedu" pojavi na vrijeme.
-  useEffect(() => {
-    const id = setInterval(() => setSada(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [])
+  const zadnjiPotez = useRef(0) // da polling ne "vrati" moj svježi potez
+  const prevI = useRef(izazov.poteza?.guessI.length || 0)
+  const prevP = useRef(izazov.poteza?.guessP.length || 0)
 
   // Prvi koji uđe stvara stanje partije; ostali ga učitaju.
   useEffect(() => {
     async function init() {
       const p = pocetnoStanje(izazov)
-      // Postavi početno stanje SAMO ako još ne postoji (siguran od istovremenog ulaska).
       await supabase.from('izazovi').update({ poteza: p }).eq('id', izazov.id).is('poteza', null)
       const { data } = await supabase.from('izazovi').select('poteza').eq('id', izazov.id).maybeSingle()
       setStanje(data?.poteza || p)
@@ -105,45 +100,88 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     }
   }, [])
 
-  // Sinkronizacija: povlači stanje svakih 1.5 s (da vidiš protivnikove poteze).
+  // Sinkronizacija: povlači stanje svakih 1.5 s. Osvježi SAMO ako se promijenilo
+  // (inače bi nepromijenjeni poll prekidao animaciju okretanja).
   useEffect(() => {
     const id = setInterval(async () => {
-      // Preskoči nakratko nakon vlastitog poteza da svjež upis ne prepiše stanje.
-      if (Date.now() - zadnjiPotez.current < 1200) return
+      if (Date.now() - zadnjiPotez.current < 1200) return // nakratko nakon vlastitog poteza
       const { data } = await supabase.from('izazovi').select('poteza').eq('id', izazov.id).maybeSingle()
-      if (data?.poteza) setStanje(data.poteza)
+      if (!data?.poteza) return
+      const noviJson = JSON.stringify(data.poteza)
+      setStanje((prev) => (JSON.stringify(prev) === noviJson ? prev : data.poteza))
     }, 1500)
     return () => clearInterval(id)
   }, [izazov.id])
+
+  // Štoperica (za timeout gumb).
+  useEffect(() => {
+    const id = setInterval(() => setSada(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Kad se pojavi NOVI pokušaj (moj ili protivnikov) -> pokreni okretanje tog reda.
+  useEffect(() => {
+    if (!stanje) return
+    const iLen = stanje.guessI.length
+    const pLen = stanje.guessP.length
+    let ploca = null
+    let red = null
+    if (iLen > prevI.current) {
+      ploca = 'I'
+      red = iLen - 1
+    } else if (pLen > prevP.current) {
+      ploca = 'P'
+      red = pLen - 1
+    }
+    prevI.current = iLen
+    prevP.current = pLen
+    if (ploca !== null) {
+      setAnim({ ploca, red })
+      setOtkriveno(0)
+      const tajmeri = []
+      for (let i = 0; i < BROJ_STUPACA; i++) {
+        tajmeri.push(setTimeout(() => setOtkriveno(i + 1), i * 280 + 250))
+      }
+      tajmeri.push(setTimeout(() => setAnim(null), TRAJANJE_OTKRIVANJA))
+      return () => tajmeri.forEach(clearTimeout)
+    }
+  }, [stanje])
+
+  // Kad je partija gotova -> pokaži rezultat tek nakon što zadnje okretanje završi.
+  useEffect(() => {
+    if (stanje?.gotovo) {
+      const id = setTimeout(() => setKrajPrikazan(true), TRAJANJE_OTKRIVANJA)
+      return () => clearTimeout(id)
+    }
+  }, [stanje?.gotovo])
+
+  // Fizička tipkovnica.
+  useEffect(() => {
+    function naPritisak(event) {
+      if (document.activeElement === inputRef.current) return
+      if (event.key === 'Enter') obradiTipku('ENTER')
+      else if (event.key === 'Backspace') obradiTipku('BACK')
+      else if (/^[a-zA-Z]$/.test(event.key)) obradiTipku(event.key.toUpperCase())
+    }
+    window.addEventListener('keydown', naPritisak)
+    return () => window.removeEventListener('keydown', naPritisak)
+  })
 
   function zatresi() {
     setTresi(true)
     setTimeout(() => setTresi(false), 500)
   }
 
-  if (!stanje) {
-    return (
-      <div className="app">
-        <h1>🔄</h1>
-        <p className="poruka">{t('loading')}</p>
-      </div>
-    )
+  // Smijem li sad igrati? (na mom je redu i imam još pokušaja)
+  function moguSad() {
+    if (!stanje) return false
+    const naMeni = stanje.naPotezu === korisnik.id && !stanje.gotovo
+    const mine = jaIzazivac ? stanje.guessI : stanje.guessP
+    return naMeni && mine.length < BROJ_REDOVA
   }
 
-  const tajna = izazov.rijeci[stanje.trenutna]
-  const naMeni = stanje.naPotezu === korisnik.id && !stanje.gotovo
-  const mojiGuesses = jaIzazivac ? stanje.guessI : stanje.guessP
-  const protivnikGuesses = jaIzazivac ? stanje.guessP : stanje.guessI
-  const moguGuessati = naMeni && mojiGuesses.length < BROJ_REDOVA
-  // Protivnik je na redu, ali dugo ne igra -> smiješ preuzeti pobjedu.
-  const neaktivan =
-    !naMeni &&
-    !stanje.gotovo &&
-    stanje.zadnjaAkcija &&
-    sada - new Date(stanje.zadnjaAkcija).getTime() > TIMEOUT_MS
-
   async function posalji() {
-    if (!moguGuessati) return
+    if (!moguSad()) return
     if (trenutni.length !== BROJ_STUPACA) {
       setPoruka(t('too_few'))
       zatresi()
@@ -162,7 +200,6 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     await supabase.from('izazovi').update({ poteza: novo }).eq('id', izazov.id)
   }
 
-  // Protivnik ne igra dugo -> preuzmi pobjedu.
   async function preuzmiPobjedu() {
     const novo = { ...stanje, gotovo: true, pobjednik: korisnik.id }
     zadnjiPotez.current = Date.now()
@@ -171,25 +208,35 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
   }
 
   function obradiTipku(tipka) {
-    if (!moguGuessati) return
+    if (!moguSad()) return
     if (tipka === 'ENTER') posalji()
-    else if (tipka === 'BACK') setTrenutni(trenutni.slice(0, -1))
-    else if (/^[A-Z]$/.test(tipka) && trenutni.length < BROJ_STUPACA) setTrenutni(trenutni + tipka)
+    else if (tipka === 'BACK') setTrenutni((v) => v.slice(0, -1))
+    else if (/^[A-Z]$/.test(tipka)) setTrenutni((v) => (v.length < BROJ_STUPACA ? v + tipka : v))
   }
 
-  useEffect(() => {
-    function naPritisak(event) {
-      if (document.activeElement === inputRef.current) return
-      if (event.key === 'Enter') obradiTipku('ENTER')
-      else if (event.key === 'Backspace') obradiTipku('BACK')
-      else if (/^[a-zA-Z]$/.test(event.key)) obradiTipku(event.key.toUpperCase())
-    }
-    window.addEventListener('keydown', naPritisak)
-    return () => window.removeEventListener('keydown', naPritisak)
-  })
+  if (!stanje) {
+    return (
+      <div className="app">
+        <h1>🔄</h1>
+        <p className="poruka">{t('loading')}</p>
+      </div>
+    )
+  }
 
-  // Boje tipkovnice iz SVIH pokušaja na trenutnoj riječi (i mojih i protivnikovih),
-  // jer oboje pogađamo istu riječ -> protivnikovi pogoci ti pomažu i na tipkovnici.
+  const tajna = izazov.rijeci[stanje.trenutna]
+  const naMeni = stanje.naPotezu === korisnik.id && !stanje.gotovo
+  const mojiGuesses = jaIzazivac ? stanje.guessI : stanje.guessP
+  const protivnikGuesses = jaIzazivac ? stanje.guessP : stanje.guessI
+  const mojKljuc = jaIzazivac ? 'I' : 'P'
+  const protKljuc = jaIzazivac ? 'P' : 'I'
+  const moguGuessati = naMeni && mojiGuesses.length < BROJ_REDOVA
+  const neaktivan =
+    !naMeni &&
+    !stanje.gotovo &&
+    stanje.zadnjaAkcija &&
+    sada - new Date(stanje.zadnjaAkcija).getTime() > TIMEOUT_MS
+
+  // Boje tipkovnice iz SVIH pokušaja na trenutnoj riječi (i mojih i protivnikovih).
   const statusSlova = {}
   const RANG = { krivo: 1, skoro: 2, tocno: 3 }
   ;[...stanje.guessI, ...stanje.guessP].forEach((g) => {
@@ -201,21 +248,27 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     })
   })
 
-  // Jedna ploča (moja ili protivnikova). "skriva" = ne pokazuj slova protivnika dok nije potvrdio.
-  function ploca(guesses, mojaPloca) {
+  // Jedna ploča. kljuc = 'I' (izazivač) ili 'P' (protivnik) — za animaciju.
+  function ploca(guesses, mojaPloca, kljuc) {
     return (
       <div className="pt-ploca">
         {Array.from({ length: BROJ_REDOVA }).map((_, r) => {
           const jePotvrdjen = r < guesses.length
-          const jeTrenutni = mojaPloca && r === guesses.length
+          const jeTrenutni = mojaPloca && r === guesses.length && !stanje.gotovo
           const rijec = jePotvrdjen ? guesses[r] : jeTrenutni ? trenutni : ''
           const ocjene = jePotvrdjen ? ocijeniRijec(guesses[r], tajna) : null
+          const jeOtkrivRed = jePotvrdjen && anim && anim.ploca === kljuc && r === anim.red
           return (
             <div className={`red ${jeTrenutni && tresi ? 'tresi' : ''}`} key={r}>
               {Array.from({ length: BROJ_STUPACA }).map((_, i) => {
                 let klase = 'kvadratic'
-                if (jePotvrdjen) klase += ` ${ocjene[i]}`
-                else if (jeTrenutni && rijec[i]) klase += ' upisano'
+                if (jePotvrdjen) {
+                  const prikaziBoju = !jeOtkrivRed || i < otkriveno
+                  if (prikaziBoju) klase += ` ${ocjene[i]}`
+                  if (jeOtkrivRed) klase += ' otkrij'
+                } else if (jeTrenutni && rijec[i]) {
+                  klase += ' upisano'
+                }
                 return (
                   <div className={klase} key={i}>
                     {rijec[i] || ''}
@@ -229,8 +282,8 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
     )
   }
 
-  // --- Kraj partije ---
-  if (stanje.gotovo) {
+  // --- Kraj partije (nakon što okretanje završi) ---
+  if (stanje.gotovo && krajPrikazan) {
     const r = izracunajRezultat({ ...izazov, poteza: stanje }, korisnik.id)
     return (
       <div className="app">
@@ -265,7 +318,6 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
       <h1>🔄 {t('ch_word_of', { n: stanje.trenutna + 1, total: izazov.rijeci.length })}</h1>
       <p className={`pt-status ${naMeni ? 'moj' : ''}`}>{statusReda}</p>
 
-      {/* Protivnik dugo ne igra -> preuzmi pobjedu */}
       {neaktivan && (
         <div className="pt-neaktivan">
           <span>{t('pt_idle')}</span>
@@ -277,7 +329,6 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
 
       {poruka && <p className="poruka">{poruka}</p>}
 
-      {/* Nevidljivo polje za tipkovnicu mobitela (aktivno samo na mom potezu) */}
       <input
         ref={inputRef}
         className="skriveni-unos"
@@ -301,15 +352,14 @@ function IgraPoteze({ korisnik, izazov, onNatrag }) {
         aria-hidden="true"
       />
 
-      {/* Dvije ploče: ti + protivnik */}
       <div className="pt-ploce" onClick={() => moguGuessati && inputRef.current?.focus()}>
         <div className="pt-strana">
           <span className="pt-oznaka">{t('pt_you')}</span>
-          {ploca(mojiGuesses, true)}
+          {ploca(mojiGuesses, true, mojKljuc)}
         </div>
         <div className="pt-strana">
           <span className="pt-oznaka">{t('pt_opponent')}</span>
-          {ploca(protivnikGuesses, false)}
+          {ploca(protivnikGuesses, false, protKljuc)}
         </div>
       </div>
 
