@@ -269,6 +269,7 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
   const [otkriveno, setOtkriveno] = useState(0) // koliko stupaca reda se već "otkrilo" (boja)
   const [animira, setAnimira] = useState(false) // traje li trenutno okretanje reda?
   const [tresi, setTresi] = useState(false)
+  const [kopirano, setKopirano] = useState(false) // "Kopirano!" nakon dijeljenja
   const [prikaziKraj, setPrikaziKraj] = useState(() =>
     jeGotovaIgra(pocetno.pokusaji, pocetno.tajne, brojRedova)
   )
@@ -384,6 +385,54 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
     setRedZaAnimaciju(null)
     setAnimira(false)
     setPrikaziKraj(jeGotovaIgra(stanje.pokusaji, stanje.tajne, brojRedova))
+  }
+
+  // Sastavi tekst rezultata s emoji-mrežom (🟩🟨⬜) za dijeljenje.
+  function tekstRezultata() {
+    const emoji = (o) => (o === 'tocno' ? '🟩' : o === 'skoro' ? '🟨' : '⬜')
+    const varIme = t('var_' + varijanta.id + '_ime')
+    const linije = [`Wordle · ${varijanta.ikona} ${varIme} · ${podnaslovZa(nacin, t)}`]
+
+    // Rezultat: klasik "n/redova", više riječi -> po ploči.
+    const rezultatPloce = (w) => {
+      const idx = pokusaji.indexOf(w)
+      return idx === -1 ? 'X' : idx + 1
+    }
+    linije.push(tajne.map(rezultatPloce).join(' · ') + `/${brojRedova}`)
+    linije.push('')
+
+    // Mreža po ploči (do reda u kojem je riječ riješena).
+    tajne.forEach((w, bi) => {
+      if (tajne.length > 1) linije.push(`#${bi + 1}`)
+      const idx = pokusaji.indexOf(w)
+      const redova = idx === -1 ? pokusaji.length : idx + 1
+      for (let r = 0; r < redova; r++) {
+        linije.push(ocijeniRijec(pokusaji[r], w).map(emoji).join(''))
+      }
+      linije.push('')
+    })
+    linije.push('wordle-app-gamma.vercel.app')
+    return linije.join('\n')
+  }
+
+  // Podijeli: probaj nativno dijeljenje (mobitel), inače kopiraj u međuspremnik.
+  async function podijeli() {
+    const tekst = tekstRezultata()
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: tekst })
+        return
+      } catch {
+        // korisnik odustao ili nije uspjelo -> probaj kopirati
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(tekst)
+      setKopirano(true)
+      setTimeout(() => setKopirano(false), 2000)
+    } catch {
+      setPoruka(tekst) // krajnja rezerva: pokaži tekst
+    }
   }
 
   // Nova igra (samo za neograničeni način).
@@ -760,6 +809,13 @@ function Igra({ korisnik, varijanta, pocetniMod, onNatrag, onOdjava }) {
           </div>
         ))}
       </div>
+
+      {/* Dijeljenje rezultata (emoji-mreža) */}
+      {prikaziKraj && (
+        <button className="gumb-podijeli" onClick={podijeli}>
+          {kopirano ? t('share_copied') : t('share')}
+        </button>
+      )}
 
       {/* Neograničeni: gumb za novu igru. Ostali načini: odbrojavanje. */}
       {prikaziKraj && nacin === 'unlimited' && (
